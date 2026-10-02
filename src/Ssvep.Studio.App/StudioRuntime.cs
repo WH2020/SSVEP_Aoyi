@@ -72,6 +72,7 @@ public sealed class StudioRuntime : IAsyncDisposable
         public long Run { get; }=run;
         public double Arrived { get; }=arrived;
         public bool Cancelled { get; set; }
+        public bool OutcomeRecorded { get; set; }
     }
 
     private static double Now => Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency;
@@ -408,9 +409,16 @@ public sealed class StudioRuntime : IAsyncDisposable
     private bool FreshSamples()=>lastSampleTime is double time&&Now-time<=.5;
     private async Task ClassifyAsync()
     {
-        await foreach(var job in classification.Reader.ReadAllAsync().ConfigureAwait(false))
+        while(await classification.Reader.WaitToReadAsync().ConfigureAwait(false))
         {
-            lock(dataGate) { if(job.Cancelled) continue; executing=job; }
+            Work job;
+            // Claiming a job and cancelling queued work share the same gate. Stop
+            // cannot miss a job between its removal from the channel and registration.
+            lock(dataGate)
+            {
+                if(!classification.Reader.TryRead(out var next)||next.Cancelled) continue;
+                job=next; executing=job;
+            }
             try
             {
                 double started=Now;
@@ -430,6 +438,7 @@ public sealed class StudioRuntime : IAsyncDisposable
                         job.Window.Window.FirstSampleIndex,job.Window.Window.LastSampleIndex,result=scores.Result,scores.RawScores,scores.ScoreVersion,
                         decision,accepted,hostSeconds=finished,classificationMilliseconds=ClassificationMilliseconds,context.RunConfigHash,modelId=sampleClock?.Current?.ModelId});
                     recorder.Record("selection",new {run=job.Run,targetId=Session.SelectedTargetId,hostSeconds=finished});
+                    job.OutcomeRecorded=true;
                 }
                 Notify();
             }
@@ -443,7 +452,7 @@ public sealed class StudioRuntime : IAsyncDisposable
     }
     private void CancelWindow(Work job,string reason)
     {
-        if(job.Cancelled) return; job.Cancelled=true;
+        if(job.OutcomeRecorded) return; job.Cancelled=true; job.OutcomeRecorded=true;
         job.Owner.Record("window-cancelled",new {run=job.Run,job.Window.Ordinal,job.Window.Continuity,job.Window.Window.FirstSampleIndex,job.Window.Window.LastSampleIndex,reason});
     }
     private void CancelWindows(string reason)

@@ -49,6 +49,7 @@ public sealed class ResearchPanel : UserControl
         minScore.Width=130; minGap.Width=130;
         thresholds.Children.Add(Label("最高分阈值",minScore)); thresholds.Children.Add(Label("分差模式",gapMode)); thresholds.Children.Add(Label("最小分差",minGap)); form.Children.Add(thresholds);
         form.Children.Add(new TextBlock {Text="软件滤波与子带权重",Margin=new(0,16,0,8),FontWeight=FontWeights.SemiBold});
+        form.Children.Add(new TextBlock {Text="硬件滤波实际状态及截止频率未核验。以下参数只处理 SDK 输出，不能关闭设备内部滤波。",FontSize=12,Foreground=Brushes.SlateGray,Margin=new(0,0,0,8)});
         for(int i=0;i<3;i++)
         {
             var row=new WrapPanel(); row.Children.Add(new TextBlock {Text=$"子带 {i+1}",Width=60,VerticalAlignment=VerticalAlignment.Center});

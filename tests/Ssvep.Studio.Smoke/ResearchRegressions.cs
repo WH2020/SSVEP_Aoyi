@@ -86,6 +86,8 @@ internal static class ResearchRegressions
             string session=runtime.LastSessionDirectory!;
             var reader=new SessionReader(session);
             long[] online=reader.Events("window-ready").Select(e=>e.Data.GetProperty("lastSampleIndex").GetInt64()).ToArray();
+            long[] outcomes=reader.Events("recognition","window-cancelled").Select(e=>e.Data.GetProperty("lastSampleIndex").GetInt64()).ToArray();
+            Check(online.Order().SequenceEqual(outcomes.Order()),"A scheduled window has a missing or duplicate terminal outcome");
             var replay=await Task.Run(()=>ReplayRunner.Run(session));
             Check(online.SequenceEqual(replay.Decisions.Select(d=>d.LastSampleIndex)),"Online and replay window boundaries differ");
             Check(reader.Events().All(e=>e.Kind!="sample"),"Per-sample JSON still recorded");
