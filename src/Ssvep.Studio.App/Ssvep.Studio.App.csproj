@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <AssemblyName>Ssvep.Studio</AssemblyName><RootNamespace>Ssvep.Studio.App</RootNamespace>
+    <Version>0.2.4</Version>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Ssvep.Speller.Core/Ssvep.Speller.Core.csproj" /></ItemGroup>
+  <ItemGroup><None Include="../Ssvep.Speller.App/Bridges/synchroni_eeg_bridge.py" Link="Bridges/synchroni_eeg_bridge.py" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup>
+    <Content Include="Vendor/Synchroni/sensor/**/*.py" Link="Bridges/sensor/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Vendor/Synchroni/LICENSE.txt" Link="Licenses/Synchroni-SDK-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

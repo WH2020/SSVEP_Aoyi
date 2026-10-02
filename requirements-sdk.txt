@@ -1,0 +1,4 @@
+# Direct dependencies used by the bundled Synchroni SDK, matching Studio 0.2.4.
+numpy==2.4.6
+bleak==3.0.2
+setuptools==82.0.1

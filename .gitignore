@@ -1,0 +1,13 @@
+.tools/
+outputs/
+.vs/
+**/.obsidian/workspace*.json
+bin/
+obj/
+logs/
+TestResults/
+__pycache__/
+*.py[cod]
+*.lnk
+*.user
+*.suo

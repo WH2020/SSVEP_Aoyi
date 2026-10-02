@@ -1,0 +1,6 @@
+Unmodified sensor package copied from the existing workspace SDK snapshot at
+.tools/synchroni-sensor-sdk/sensor on 2026-09-15.
+Project design provenance records revision b11ff17fcf3c226a7feb6dfb0bd05665f16d014d.
+License: MIT; retained in LICENSE.txt.
+The application bridge imports this adjacent package before external site-packages.
+This copy avoids depending on a hidden tools directory for source distribution.
