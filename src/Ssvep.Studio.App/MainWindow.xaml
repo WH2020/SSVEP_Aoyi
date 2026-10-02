@@ -17,7 +17,11 @@
    <DockPanel>
     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,30"><TextBlock Text="SSVEP" FontSize="29" FontWeight="Bold" Foreground="White"/><TextBlock Text="实验设计" Foreground="#AAC2D8" Margin="0,4,0,0"/></StackPanel>
     <StackPanel DockPanel.Dock="Bottom"><TextBlock Text="固定六目标实验" Foreground="#AAC2D8" FontSize="12"/><TextBlock Text="内容编辑 · 佩戴检查 · 在线识别" Foreground="#7995AE" FontSize="11" Margin="0,8,0,0"/></StackPanel>
-    <StackPanel><Button x:Name="EditorNav" Content="01  刺激内容" Style="{StaticResource Nav}" Click="Navigate_Click"/><Button x:Name="PrepareNav" Content="02  设备与阻抗" Style="{StaticResource Nav}" Click="Navigate_Click"/><Button x:Name="RunNav" Content="03  实验运行" Style="{StaticResource Nav}" Click="Navigate_Click"/><Button x:Name="RecordsNav" Content="04  实验记录" Style="{StaticResource Nav}" Click="Navigate_Click"/></StackPanel>
+    <StackPanel><Button x:Name="EditorNav" Content="01  刺激内容" Style="{StaticResource Nav}" Click="Navigate_Click"/><Button x:Name="PrepareNav" Content="02  设备与阻抗" Style="{StaticResource Nav}" Click="Navigate_Click"/><Button x:Name="RunNav" Content="03  实验运行" Style="{StaticResource Nav}" Click="Navigate_Click"/><Button x:Name="RecordsNav" Content="04  实验记录" Style="{StaticResource Nav}" Click="Navigate_Click"/>
+     <CheckBox x:Name="ResearchToggle" Content="参数研发模式" Foreground="#AAC2D8" Margin="0,12,0,12" Checked="ResearchMode_Changed" Unchecked="ResearchMode_Changed"/>
+     <Button x:Name="ResearchNav" Content="05  参数方案" Visibility="Collapsed" Style="{StaticResource Nav}" Click="Navigate_Click"/>
+     <Button x:Name="ReplayNav" Content="06  回放对比" Visibility="Collapsed" Style="{StaticResource Nav}" Click="Navigate_Click"/>
+    </StackPanel>
    </DockPanel>
   </Border>
   <Grid Grid.Column="1" Margin="30,24,30,20">
@@ -79,9 +83,12 @@
     </Grid></Border>
    </Grid></ScrollViewer>
    <Grid x:Name="RunPage" Grid.Row="2" Visibility="Collapsed">
-    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition x:Name="DiagnosticsRow" Height="0"/></Grid.RowDefinitions>
     <DockPanel Margin="0,0,0,16"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button x:Name="StartButton" Content="开始实验" Style="{StaticResource Primary}" Click="Start_Click"/><Button x:Name="PauseButton" Content="暂停" Click="Pause_Click"/><Button x:Name="StopButton" Content="结束实验" Click="Stop_Click"/></StackPanel><TextBlock x:Name="RunStatus" Text="请先连接设备并选择识别通道" VerticalAlignment="Center" MaxWidth="350"/></DockPanel>
-    <Border x:Name="SimulationPanel" Grid.Row="1" Background="#FFF1D6" Padding="10" Margin="0,0,0,12" Visibility="Collapsed"><StackPanel Orientation="Horizontal"><TextBlock Text="模拟脑电演示  ·  模拟注视目标" VerticalAlignment="Center" Margin="0,0,16,0"/><ComboBox x:Name="SimulationTargetCombo" Width="160" SelectedIndex="1" SelectionChanged="SimulationTarget_Changed"><ComboBoxItem Content="目标 1"/><ComboBoxItem Content="目标 2"/><ComboBoxItem Content="目标 3"/><ComboBoxItem Content="目标 4"/><ComboBoxItem Content="目标 5"/><ComboBoxItem Content="目标 6"/></ComboBox></StackPanel></Border>
+    <StackPanel Grid.Row="1">
+     <Border x:Name="SimulationPanel" Background="#FFF1D6" Padding="10" Margin="0,0,0,12" Visibility="Collapsed"><StackPanel Orientation="Horizontal"><TextBlock Text="模拟脑电演示  ·  模拟注视目标" VerticalAlignment="Center" Margin="0,0,16,0"/><ComboBox x:Name="SimulationTargetCombo" Width="160" SelectedIndex="1" SelectionChanged="SimulationTarget_Changed"><ComboBoxItem Content="目标 1"/><ComboBoxItem Content="目标 2"/><ComboBoxItem Content="目标 3"/><ComboBoxItem Content="目标 4"/><ComboBoxItem Content="目标 5"/><ComboBoxItem Content="目标 6"/></ComboBox></StackPanel></Border>
+     <StackPanel x:Name="CalibrationBar" Visibility="Collapsed" Margin="0,0,0,10"><WrapPanel><CheckBox x:Name="IndependentTest" Content="独立测试" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="新会话采集固定候选：六目标各十次，加十一分钟无意图以留出有效评估时间。此数据不能扫描阈值。"/><Button x:Name="CalibrationStart" Content="开始个人校准" Click="Calibration_Click"/><Button Content="标记走神并补采" Click="ExcludeTrial_Click"/><Button Content="结束校准" Click="CancelCalibration_Click"/></WrapPanel><TextBlock x:Name="CalibrationStatus" FontSize="12" Foreground="#627087" Margin="0,6,0,0"/></StackPanel>
+    </StackPanel>
     <Border Grid.Row="2" CornerRadius="10" ClipToBounds="True"><local:StudioStimulusView x:Name="RunStimulus"/></Border>
     <DockPanel Grid.Row="3" Margin="0,12,0,0">
      <Border DockPanel.Dock="Right" Background="#E1EBE9" CornerRadius="6" Padding="12,7" Margin="16,0,0,0" VerticalAlignment="Center"
@@ -90,17 +97,20 @@
      </Border>
      <TextBlock Text="注视一个刺激目标，识别后会在该目标外显示选中框。按 Esc 可立即暂停。" Foreground="#66788B" FontSize="12" VerticalAlignment="Center"/>
     </DockPanel>
+    <Border x:Name="DiagnosticsPanel" Grid.Row="4" Visibility="Collapsed" Background="#EAF0F5" CornerRadius="6" Padding="10" Margin="0,8,0,0"><ScrollViewer VerticalScrollBarVisibility="Auto"><TextBlock x:Name="DiagnosticsText" FontSize="12"/></ScrollViewer></Border>
    </Grid>
    <Grid x:Name="RecordsPage" Grid.Row="2" Visibility="Collapsed">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-    <DockPanel Margin="0,0,0,16"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="刷新记录" Click="RefreshRecords_Click"/><Button Content="打开记录文件夹" Click="OpenRecord_Click"/></StackPanel><TextBlock Text="每次实验独立保存，模拟与真实数据分别标识。" Foreground="#66788B" VerticalAlignment="Center"/></DockPanel>
+    <DockPanel Margin="0,0,0,16"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="刷新记录" Click="RefreshRecords_Click"/><Button Content="回放 / 导出" Click="ReplayRecord_Click"/><Button Content="打开记录文件夹" Click="OpenRecord_Click"/></StackPanel><TextBlock Text="每次实验独立保存，模拟与真实数据分别标识。" Foreground="#66788B" VerticalAlignment="Center"/></DockPanel>
     <ListView x:Name="RecordsList" Grid.Row="1" BorderBrush="#DFE5EC"><ListView.View><GridView><GridViewColumn Header="开始时间" DisplayMemberBinding="{Binding Time}" Width="175"/><GridViewColumn Header="方案" DisplayMemberBinding="{Binding Name}" Width="210"/><GridViewColumn Header="数据来源" DisplayMemberBinding="{Binding Source}" Width="140"/><GridViewColumn Header="记录状态" DisplayMemberBinding="{Binding Status}" Width="190"/></GridView></ListView.View></ListView>
     <TextBlock x:Name="RecordsHint" Grid.Row="2" Text="记录包括原始脑电、阻抗、刺激时序、识别结果和会话状态。" Foreground="#66788B" FontSize="12" Margin="0,12,0,0"/>
    </Grid>
+   <ContentControl x:Name="ResearchPage" Grid.Row="2" Visibility="Collapsed"/>
+   <ContentControl x:Name="ReplayPage" Grid.Row="2" Visibility="Collapsed"/>
    <DockPanel Grid.Row="3" Margin="0,18,0,0">
     <TextBlock x:Name="LossCountLabel" DockPanel.Dock="Right" Text="丢包提示 0 次 · 累计丢样 0 点" Foreground="#66788B" FontSize="12" HorizontalAlignment="Right"
      ToolTip="本次连接的 EEG 丢包提示次数与 SDK 报告的丢样点数。COUNT 的单位是采样点，不是蓝牙包；重新连接后清零。"/>
-    <TextBlock Text="SSVEP 实验设计  /  R01" Foreground="#8B98A8" FontSize="11"/>
+    <TextBlock Text="SSVEP 实验设计  /  0.3.0 参数研发" Foreground="#8B98A8" FontSize="11"/>
    </DockPanel>
   </Grid>
  </Grid>

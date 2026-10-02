@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageReference Include="jsoncanonicalizer" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

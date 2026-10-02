@@ -27,6 +27,12 @@ internal static class Program
             MainWindow? window = null;
             try
             {
+                if (args.Length > 1 && args[1] == "--research")
+                {
+                    app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                    exit = await ResearchRegressions.Run(output,args[2],args.Contains("--ui-only"));
+                    return;
+                }
                 if (args.Length > 1 && args[1] == "--regressions")
                 {
                     app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -132,6 +138,7 @@ internal static class Program
                 Snapshot(window, Path.Combine(output, "impedance.png"));
                 Click("RunNav");
                 Click("StartButton");
+                Check(window.Runtime.ActiveContext?.Display.Width>0&&window.Runtime.ActiveContext.Display.Height>0,"Display snapshot was captured before layout");
                 Check(window.Runtime.FrameRateHz is null && fpsLabel.Text == "实时帧率 统计中", "Start reused old frame history");
                 await Until(() => window.Runtime.Session.SelectedTargetId != null, "No synthetic EEG recognition", 15000);
                 Check(window.Runtime.Session.SelectedTargetId == "T2", "Classifier must select simulated T2");

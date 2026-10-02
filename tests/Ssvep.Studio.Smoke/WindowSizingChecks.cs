@@ -58,6 +58,7 @@ internal static class WindowSizingChecks
                 "MSG|LOST SAMPLE|MAC|AA:BB|TYPE|16|COUNT|10", DateTimeOffset.UtcNow));
             typeof(StudioRuntime).GetMethod("ReceiveDiagnostics", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(window.Runtime, [diagnostics.CreateSnapshot(), 0L]);
+            await Task.Delay(250); // Diagnostics are displayed by the coalesced 200 ms UI refresh.
             var lossLabel = (TextBlock)window.FindName("LossCountLabel");
             Check(lossLabel.Text == "丢包提示 2 次 · 累计丢样 20 点", "Footer did not display cumulative SDK loss counters");
             Check(string.IsNullOrEmpty(window.Runtime.Notice), "Loss was displayed as a fatal notice");
@@ -100,6 +101,20 @@ internal static class WindowSizingChecks
                 var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using(var file=File.Create(Path.Combine(output,$"run-viewport-{size.Width}.png"))) encoder.Save(file);
                 results.Add($"PASS {size.Width}x{size.Height} run layout: live FPS label and experiment actions remain inside viewport");
+            }
+            File.WriteAllLines(Path.Combine(output,"result.txt"),results);
+            ((CheckBox)window.FindName("ResearchToggle")).IsChecked=true;
+            foreach(var size in new[]{new Size(1280,800),new Size(928,456),new Size(850,430)})
+            {
+                var viewport=(FrameworkElement)window.Content;
+                viewport.Measure(size);viewport.Arrange(new Rect(size));viewport.UpdateLayout();
+                foreach(string name in new[]{"PageTitle","ReplayNav","CalibrationStart","StartButton","FrameRateLabel","DiagnosticsPanel"})
+                {
+                    var control=(FrameworkElement)window.FindName(name);
+                    var bounds=control.TransformToAncestor(viewport).TransformBounds(new Rect(control.RenderSize));
+                    Check(bounds.Top>=-1&&bounds.Bottom<=size.Height+1&&bounds.Left>=-1&&bounds.Right<=size.Width+1,$"Research {size}: {name} clipped ({bounds})");
+                }
+                results.Add($"PASS research {size}: calibration, diagnostic panel and navigation remain visible");
             }
             File.WriteAllLines(Path.Combine(output,"result.txt"),results);
             return 0;

@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Ssvep.Speller.Core.Stimulus;
 using Ssvep.Speller.Core.Studio;
+using Ssvep.Speller.Core.Research;
 
 namespace Ssvep.Studio.App;
 
@@ -13,12 +14,24 @@ public sealed class StudioStimulusView : FrameworkElement
 {
     private StudioContentPackage? content;
     private readonly Dictionary<string, BitmapSource> images = new();
-    private readonly Stopwatch clock = new();
+    private readonly PresentationClock clock = new();
+    private IReadOnlyList<StimulusTarget> targets = StudioRuntimeProfile.Targets;
     private bool running;
     private string? selected;
     private TimeSpan lastRenderTime = TimeSpan.MinValue;
     private TimeSpan lastRecordedRenderTime = TimeSpan.MinValue;
+    private string cueText = "";
+    private long cueVersion;
+    private long drawnCueVersion = -1;
+    public string CueText { get => cueText; set { cueText=value; cueVersion++; InvalidateVisual(); } }
+    public event Action<string,double,double>? CuePresented;
     public event Action<double>? FrameRendered;
+    public event Action<double,double,string?,long>? PresentationRendered;
+    public void SetTargets(IReadOnlyList<StimulusTarget> value)
+    {
+        if (running) return;
+        targets = Array.AsReadOnly(value.ToArray()); InvalidateVisual();
+    }
     public string? SelectedTargetId { get => selected; set { if (selected != value) { selected = value; InvalidateVisual(); } } }
 
     public StudioStimulusView()
@@ -51,7 +64,7 @@ public sealed class StudioStimulusView : FrameworkElement
     {
         if (running == value) return;
         running = value;
-        if (running) { clock.Restart(); lastRenderTime = TimeSpan.MinValue; lastRecordedRenderTime = TimeSpan.MinValue; }
+        if (running) { clock.Reset(); lastRenderTime = TimeSpan.MinValue; lastRecordedRenderTime = TimeSpan.MinValue; }
         else { clock.Reset(); SelectedTargetId = null; }
         InvalidateVisual();
     }
@@ -60,6 +73,7 @@ public sealed class StudioStimulusView : FrameworkElement
     {
         if (!running || args is not RenderingEventArgs frame || frame.RenderingTime == lastRenderTime) return;
         lastRenderTime = frame.RenderingTime;
+        clock.Advance(frame.RenderingTime.TotalSeconds);
         InvalidateVisual();
     }
 
@@ -68,7 +82,7 @@ public sealed class StudioStimulusView : FrameworkElement
         base.OnRender(dc);
         dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(16, 25, 43)), null, new Rect(RenderSize));
         if (content is null || ActualWidth < 100 || ActualHeight < 100) return;
-        double seconds = clock.Elapsed.TotalSeconds;
+        double seconds = clock.PhaseSeconds;
         double gap = 28, pad = 32;
         double width = (ActualWidth - pad * 2 - gap * 2) / 3;
         double height = (ActualHeight - pad * 2 - gap) / 2;
@@ -78,7 +92,7 @@ public sealed class StudioStimulusView : FrameworkElement
             var cell = new Rect(pad + i % 3 * (width + gap), pad + i / 3 * (height + gap), width, height);
             var flicker = new Rect(cell.X + 6, cell.Y + 6, cell.Width - 12, Math.Max(32, cell.Height - 44));
             double luminance = running ? StimulusPresentation.CalculateLuminance(
-                StudioRuntimeProfile.Targets[i].FrequencyHz, StudioRuntimeProfile.Targets[i].PhaseRadians, seconds) : .88;
+                targets[i].FrequencyHz, targets[i].PhaseRadians, seconds) : .88;
             byte grey = (byte)Math.Round(30 + luminance * 215);
             dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(grey, grey, grey)), null, flicker, 8, 8);
             dc.PushClip(new RectangleGeometry(new Rect(flicker.X + 10, flicker.Y + 10, flicker.Width - 20, flicker.Height - 20)));
@@ -100,10 +114,21 @@ public sealed class StudioStimulusView : FrameworkElement
                     new Rect(cell.X, cell.Y, cell.Width, cell.Height - 32), 12, 12);
         }
         // Selection borders or layout updates can redraw within the same composition frame.
+        string drawnCue=cueText; long drawnVersion=cueVersion;
+        if (!string.IsNullOrEmpty(drawnCue))
+            DrawText(dc,drawnCue,new Rect(0,ActualHeight/2-19,ActualWidth,38),Brushes.White,16);
+        // A cue may redraw within one composition frame. Acknowledge the text that was
+        // actually drawn, separately from the deduplicated frame/FPS callback.
+        if(running && lastRenderTime != TimeSpan.MinValue && drawnVersion != drawnCueVersion)
+        {
+            drawnCueVersion=drawnVersion;
+            CuePresented?.Invoke(drawnCue,lastRenderTime.TotalSeconds,Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency);
+        }
         if (running && lastRenderTime != TimeSpan.MinValue && lastRecordedRenderTime != lastRenderTime)
         {
             lastRecordedRenderTime = lastRenderTime;
             FrameRendered?.Invoke(seconds);
+            PresentationRendered?.Invoke(lastRenderTime.TotalSeconds, seconds, selected, clock.Epoch);
         }
     }
 

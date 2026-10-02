@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     private readonly Dictionary<int, (CheckBox Check, TextBlock Value, ComboBox Position)> cards = new();
     private bool refreshingChannels;
     private string? channelContext;
+    private readonly ResearchPanel researchPanel;
+    private readonly ReplayPanel replayPanel;
+    private readonly CalibrationController calibration;
     public StudioRuntime Runtime { get; }
 
     public MainWindow() : this(null) { }
@@ -29,23 +32,36 @@ public partial class MainWindow : Window
     {
         Runtime = new StudioRuntime(Dispatcher, bridgeOptionsFactory);
         InitializeComponent();
+        researchPanel=new ResearchPanel(Runtime); ResearchPage.Content=researchPanel;
+        replayPanel=new ReplayPanel(Runtime,researchPanel); ReplayPage.Content=replayPanel;
+        calibration=new CalibrationController(Runtime,RunStimulus);
+        calibration.Changed+=()=>CalibrationStatus.Text=calibration.Status;
+        CalibrationStatus.Text=calibration.Status;
         StudioWindowPlacement.Attach(this);
         HeadMap.ElectrodeInvoked += HeadMap_Invoked;
         Runtime.Changed += (_, _) => RefreshState();
-        RunStimulus.FrameRendered += Runtime.RecordFrame;
+        RunStimulus.PresentationRendered += Runtime.RecordPresentation;
+        RunStimulus.SizeChanged+=(_,e)=> {if(Runtime.IsRunning&&e.PreviousSize.Width>0) Runtime.Pause("刺激区域尺寸改变，请结束本次会话后重新开始");};
         BindContent(0);
         RefreshState();
+        if(Environment.GetCommandLineArgs().Contains("--research")) ResearchToggle.IsChecked=true;
         PreviewKeyDown += (_, args) => { if (args.Key == Key.Escape) { Runtime.Pause(); args.Handled = true; } };
         StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) Runtime.Pause("窗口已最小化，实验暂停"); };
+        DpiChanged += (_,_)=>Runtime.Pause("屏幕缩放已改变，请结束本次会话后重新开始");
         Deactivated += (_, _) => Runtime.Pause("实验窗口失去焦点，已暂停");
         Closing += Window_Closing;
     }
 
     private void Viewport_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (LayoutRoot is null || e.NewSize.Width <= 0 || e.NewSize.Height <= 0) return;
+        if(Runtime.IsRunning) Runtime.Pause("窗口尺寸已改变，请结束本次会话后重新开始");
+        UpdateViewportScale(e.NewSize);
+    }
+    private void UpdateViewportScale(Size size)
+    {
+        if (LayoutRoot is null || size.Width <= 0 || size.Height <= 0) return;
         // Preserve all navigation and editing controls on small/high-DPI work areas.
-        double scale = Math.Min(1, Math.Min(e.NewSize.Width / 1000, e.NewSize.Height / 640));
+        double scale = Math.Min(1, Math.Min(size.Width / 1000, size.Height / (ResearchToggle?.IsChecked==true?800:640)));
         if (LayoutRoot.LayoutTransform is ScaleTransform current && Math.Abs(current.ScaleX - scale) < .001) return;
         LayoutRoot.LayoutTransform = new ScaleTransform(scale, scale);
     }
@@ -147,7 +163,9 @@ public partial class MainWindow : Window
         PreparePage.Visibility = name == "PrepareNav" ? Visibility.Visible : Visibility.Collapsed;
         RunPage.Visibility = name == "RunNav" ? Visibility.Visible : Visibility.Collapsed;
         RecordsPage.Visibility = name == "RecordsNav" ? Visibility.Visible : Visibility.Collapsed;
-        PageTitle.Text = name switch { "PrepareNav" => "设备与阻抗", "RunNav" => "实验运行", "RecordsNav" => "实验记录", _ => "刺激内容" };
+        ResearchPage.Visibility=name=="ResearchNav"?Visibility.Visible:Visibility.Collapsed;
+        ReplayPage.Visibility=name=="ReplayNav"?Visibility.Visible:Visibility.Collapsed;
+        PageTitle.Text = name switch { "PrepareNav" => "设备与阻抗", "RunNav" => "实验运行", "RecordsNav" => "实验记录", "ResearchNav"=>"参数方案", "ReplayNav"=>"回放对比与数据导出", _ => "刺激内容" };
         if (name == "RecordsNav") RefreshRecords();
         ClearNotice(); RefreshState();
     }
@@ -155,10 +173,40 @@ public partial class MainWindow : Window
     private async void Connect_Click(object sender, RoutedEventArgs e)
     { ClearNotice(); try { await Runtime.ConnectAsync(SourceCombo.SelectedIndex == 1, DeviceAddress.Text); } catch (Exception ex) { ShowNotice(ex.Message); } }
     private async void Disconnect_Click(object sender, RoutedEventArgs e)
-    { try { await Runtime.DisconnectAsync(); } catch (Exception ex) { ShowNotice(ex.Message); } }
-    private void Start_Click(object sender, RoutedEventArgs e) => Attempt(() => { ApplyEditor(); ClearNotice(); Runtime.Start(content); });
+    { try { calibration.Cancel(); await Runtime.DisconnectAsync(); } catch (Exception ex) { ShowNotice(ex.Message); } }
+    private void Start_Click(object sender, RoutedEventArgs e) => Attempt(() =>
+    {
+        ApplyEditor(); ClearNotice();
+        WindowViewport.UpdateLayout();
+        var dpi=VisualTreeHelper.GetDpi(RunStimulus);
+        var displayed=RunStimulus.TransformToAncestor(WindowViewport).TransformBounds(new Rect(RunStimulus.RenderSize));
+        Runtime.Start(content,new Ssvep.Speller.Core.Research.DisplayGeometry(displayed.Width,displayed.Height,dpi.DpiScaleX,dpi.DpiScaleY));
+    });
     private void Pause_Click(object sender, RoutedEventArgs e) => Runtime.Pause();
-    private async void Stop_Click(object sender, RoutedEventArgs e) { await Runtime.StopAsync(); RefreshRecords(); }
+    private async void Stop_Click(object sender, RoutedEventArgs e) { calibration.Cancel(); await Runtime.StopAsync(); RefreshRecords(); }
+    private void ResearchMode_Changed(object sender,RoutedEventArgs e)
+    {
+        if(!IsInitialized) return;
+        bool research=ResearchToggle.IsChecked==true;
+        ResearchNav.Visibility=ReplayNav.Visibility=CalibrationBar.Visibility=DiagnosticsPanel.Visibility=research?Visibility.Visible:Visibility.Collapsed;
+        DiagnosticsRow.Height=new GridLength(research?90:0);
+        UpdateViewportScale(new(WindowViewport.ActualWidth,WindowViewport.ActualHeight));
+        if(!research&&(ResearchPage.Visibility==Visibility.Visible||ReplayPage.Visibility==Visibility.Visible))
+            Navigate_Click(EditorNav,new RoutedEventArgs());
+    }
+    private void Calibration_Click(object sender,RoutedEventArgs e)=>Attempt(()=>
+    {
+        if(!Runtime.IsRunning) Start_Click(sender,e);
+        calibration.Start(independentTest:IndependentTest.IsChecked==true);
+    });
+    private void ExcludeTrial_Click(object sender,RoutedEventArgs e)=>Attempt(calibration.MarkDistracted);
+    private void CancelCalibration_Click(object sender,RoutedEventArgs e)=>calibration.Cancel();
+    private void ReplayRecord_Click(object sender,RoutedEventArgs e)=>Attempt(()=>
+    {
+        if(RecordsList.SelectedItem is not RecordRow row) throw new InvalidOperationException("请先选择一条记录。");
+        if(Runtime.ConfigurationLocked) throw new InvalidOperationException("请先结束实验。");
+        ResearchToggle.IsChecked=true; replayPanel.SetFolder(row.Folder); Navigate_Click(ReplayNav,new RoutedEventArgs());
+    });
     private void SimulationTarget_Changed(object sender, SelectionChangedEventArgs e)
     { if (Runtime is not null && IsInitialized) Runtime.SimulationTarget = SimulationTargetCombo.SelectedIndex; }
 
@@ -170,8 +218,17 @@ public partial class MainWindow : Window
         FrameRateLabel.Text = !Runtime.IsRunning ? "实时帧率 -- FPS"
             : Runtime.FrameRateHz is { } fps ? $"实时帧率 {fps:0.0} FPS" : "实时帧率 统计中";
         RunStatus.Text = Runtime.Session.Message;
+        RunStimulus.SetTargets((Runtime.ActiveContext?.Profile??Runtime.Profile).Targets());
         RunStimulus.SetRunning(Runtime.IsRunning);
         RunStimulus.SelectedTargetId = Runtime.Session.SelectedTargetId;
+        researchPanel.RefreshState(); calibration.ObserveState();
+        IndependentTest.IsEnabled=!calibration.IsActive;
+        ResearchToggle.IsEnabled=!Runtime.ConfigurationLocked;
+        var score=Runtime.LastScores; var clock=Runtime.SampleClock;
+        DiagnosticsText.Text=(score is null?"等待完整窗口":string.Join("    ",score.Result.Scores.Select(p=>$"{p.Key} {p.Value:0.0000}")))+"\n"+
+            $"判决：{Runtime.LastDecision?.Reason??"WaitingData"} · 算法 {Runtime.ClassificationMilliseconds:0.0} ms · 已判窗口 {Runtime.ValidWindows} · 拒识 {Runtime.RejectedWindows} · 帧 P95 {Runtime.FrameIntervalP95Milliseconds:0.0} ms · 长帧(>50 ms) {Runtime.LongFrameCount}\n"+
+            (clock is null?"样本时钟：等待观测":$"样本时钟：{clock.Quality} · 漂移 {clock.PeriodDriftPpm:0.0} ppm · 残差 P95 {clock.ResidualP95Seconds*1000:0.00} ms")+
+            $" · {(Runtime.IsSimulation?"模拟采集":Runtime.BridgeHealth?.Message??"设备未连接")}";
         EditorPage.IsEnabled = !Runtime.ConfigurationLocked;
         SourceCombo.IsEnabled = !Runtime.ConfigurationLocked && !Runtime.IsConnecting && !Runtime.IsConnected;
         DeviceAddress.IsEnabled = SourceCombo.IsEnabled;
@@ -180,6 +237,7 @@ public partial class MainWindow : Window
         StartButton.IsEnabled = Runtime.IsConnected && !Runtime.IsRunning && !Runtime.IsConnecting && !Runtime.IsRecording
             || Runtime.IsConnected && Runtime.Session.State == StudioSessionState.Paused;
         StartButton.Content = Runtime.Session.State == StudioSessionState.Paused ? "恢复实验" : "开始实验";
+        if(Runtime.IsOfflineBusy) StartButton.IsEnabled=false;
         PauseButton.IsEnabled = Runtime.IsRunning;
         StopButton.IsEnabled = Runtime.IsRunning || Runtime.IsRecording;
         SimulationPanel.Visibility = Runtime.IsSimulation ? Visibility.Visible : Visibility.Collapsed;
@@ -308,6 +366,7 @@ public partial class MainWindow : Window
                     try
                     {
                         using var json = JsonDocument.Parse(File.ReadAllText(path)); var item = json.RootElement;
+                        if(item.TryGetProperty("status",out var status)&&status.GetString()=="start-failed") continue;
                         records.Add(new RecordRow(item.GetProperty("startedAt").GetDateTimeOffset().ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                             item.GetProperty("name").GetString() ?? "未命名", item.GetProperty("dataSource").GetString() == "simulation" ? "模拟脑电" : "真实 SDK",
                             item.GetProperty("completed").GetBoolean() ? "完整" : "未完成 / 异常中断", Path.GetDirectoryName(path)!));
@@ -333,7 +392,7 @@ public partial class MainWindow : Window
     {
         if (closing) return;
         e.Cancel = true; closing = true;
-        try { await Runtime.DisposeAsync(); }
+        try { calibration.Cancel(); await replayPanel.CancelAsync(); await Runtime.DisposeAsync(); }
         finally { _ = Dispatcher.BeginInvoke(new Action(Close)); }
     }
     private sealed record RecordRow(string Time, string Name, string Source, string Status, string Folder);

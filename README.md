@@ -2,7 +2,9 @@
 
 第一套 SSVEP 桌面软件的独立入口为 `src/Ssvep.Studio.App`。固定六目标，支持文字、图形、图片内容编辑与方案保存，提供 10–20 电极位置图选通道、手动电极对应表与保存、阻抗参考显示、单次识别选中框和实验记录。原有 `Ssvep.Speller.App` 保留作历史与回归参考。
 
-参数研发分支为 `feature/parameter-research`，目标设计版本为 0.3.0。见[参数研发版本设计](docs/SSVEP参数研发版本设计.md)与[交互原型](docs/prototypes/parameter-research.html)；原型下载后可直接用浏览器打开。本次仅完成设计，桌面程序仍为 0.2.4。
+参数研发分支为 `feature/parameter-research`，软件版本为 **0.3.0**。新增参数方案、连续滤波、样本数驱动识别、时钟映射、独立桥接心跳、校准/独立测试、回放阈值比较、二进制记录和 BrainVision 导出。双击项目根目录 **启动参数研发版.cmd**；操作见[研发版使用说明](docs/SSVEP参数研发版使用说明.md)。原版 0.2.4 运行包及入口保留。
+
+正式研发文档：[产品需求 PRD](docs/SSVEP参数研发版PRD.md)与[架构设计](docs/SSVEP参数研发版架构设计.md)，设计版本 1.1；实施情况和验证边界见[实施记录](docs/SSVEP参数研发版实施记录.md)。`docs/deliverables` 保留设计阶段 Word 稿；[交互原型](docs/prototypes/parameter-research.html)使用演示数据。
 
 直接运行：从 [GitHub Releases](https://github.com/WH2020/SSVEP_Aoyi/releases) 下载 `SSVEP-Studio-win-x64.zip`，完整解压后双击包内的 **启动软件.cmd**，无需安装 .NET 或 Python 开发环境。请保留整个 `SSVEP-Studio` 文件夹。
 
@@ -30,6 +32,7 @@ python -m pip install -r requirements-sdk.txt
 dotnet build Ssvep.Speller.sln -c Release -m:1
 dotnet test tests/Ssvep.Speller.Tests/Ssvep.Speller.Tests.csproj -c Release
 dotnet run --project src/Ssvep.Studio.App/Ssvep.Studio.App.csproj
+dotnet run --project src/Ssvep.Studio.App/Ssvep.Studio.App.csproj -- --research
 dotnet run --project tests/Ssvep.Studio.Smoke/Ssvep.Studio.Smoke.csproj -- outputs/studio-development/smoke-local
 dotnet run --project tests/Ssvep.Studio.EditorSmoke/Ssvep.Studio.EditorSmoke.csproj -- outputs/studio-development/editor-local
 ```
@@ -38,17 +41,20 @@ dotnet run --project tests/Ssvep.Studio.EditorSmoke/Ssvep.Studio.EditorSmoke.csp
 
 SDK 协议测试需要附加 `--sdk <python.exe路径>`，测试脚本仅产生合成数据、不连接硬件。测试、审查与修复记录在 `outputs/studio-development`。
 
+研发集成测试使用 Smoke 项目的 `--research <python.exe路径>`；跨语言 JCS / SciPy 校验及 MNE 读回工具位于 `tools`。运行 `tools/publish-research.ps1` 可利用已有 SDK Python 运行环境发布独立 `outputs/SSVEP-Studio-Research` 包。发布和真实设备测试是不同步骤，生成包不表示已通过真人指标验收。
+
 电极图交互回归使用 Smoke 项目的 `--headmap <python.exe路径>`，覆盖手动映射、重启恢复、选择同步、运行锁定、32 通道子集与阻抗过期。2026-09-26 的验证输出位于 `outputs/studio-electrode-map-20260926`。
 
 ## 目录
 
 - `src/Ssvep.Studio.App`：独立 WPF 应用、运行接入、刺激绘制。
 - `src/Ssvep.Speller.Core/Studio`：内容方案、会话、取窗、阻抗与记录。
+- `src/Ssvep.Speller.Core/Research`：参数/JCS、样本调度、连续滤波、时钟、二进制、回放评估、独立验证和 BrainVision。
 - `tests/Ssvep.Speller.Tests`：原有与新增核心回归。
 - `tests/Ssvep.Studio.Smoke`：WPF 与采集/识别/记录全流程。
 - `tests/Ssvep.Studio.EditorSmoke`：真实控件编辑、图片解码和布局检查。
 - `outputs/SSVEP-Studio`：带 .NET 与 Python 运行环境的本地交付目录。
 
-本仓库的当前软件版本为 **0.2.4**。`outputs`、编译缓存、实验记录和本机快捷方式不纳入 Git；本地开发快照与验证产物保留在原工作目录中。算法优化与个人校准方案尚未实施。
+本分支的软件版本为 **0.3.0 参数研发版**。`outputs`、编译缓存、实验记录和本机快捷方式不纳入 Git。工程测试使用合成数据与 SDK 协议夹具；真实设备、个人误决策指标、物理显示锁时及三十分钟实机性能仍需验证。
 
 Synchroni SDK 的 MIT 许可及来源说明保存在 `src/Ssvep.Studio.App/Vendor/Synchroni`。

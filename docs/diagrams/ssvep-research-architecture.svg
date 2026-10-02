@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1100" viewBox="0 0 1320 1100">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#526779"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/>
+<text x="48" y="42" font-family="Microsoft YaHei, sans-serif" font-size="30" fill="#142f40" font-weight="600" text-anchor="start">SSVEP 参数研发版总体架构</text>
+<text x="48" y="78" font-family="Microsoft YaHei, sans-serif" font-size="19" fill="#62717d" font-weight="400" text-anchor="start">0.3.0 拟议设计  ·  WPF 桌面单体与本地 SDK 桥接</text>
+<rect x="48" y="112" width="1224" height="105" rx="9" fill="#eff3f7" stroke="#d0dbe4" stroke-width="2"/>
+<text x="660.0" y="146" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">表现层  WPF</text>
+<text x="660.0" y="176" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">刺激内容  ·  设备与阻抗  ·  参数方案  ·  实验运行  ·  个人校准  ·  回放对比  ·  记录</text>
+<polyline points="660,217 660,251" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="255" width="370" height="112" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="233.0" y="289" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">参数仓库与校验</text>
+<text x="233.0" y="319" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">只读基线 / 候选修订 / 验证证据</text>
+<text x="233.0" y="346" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">JCS 指纹 / 不可变运行快照</text>
+<rect x="458" y="255" width="390" height="112" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="653.0" y="289" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">后台会话协调器</text>
+<text x="653.0" y="319" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">用户命令 / 健康事件 / 分类结果</text>
+<text x="653.0" y="346" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">状态与过载处理 / UI 消费快照</text>
+<rect x="888" y="255" width="384" height="112" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="1080.0" y="289" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">校准与刺激呈现</text>
+<text x="1080.0" y="319" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">六目标 / RenderingTime</text>
+<text x="1080.0" y="346" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">帧与提示 / 选中框绘制回执</text>
+<polyline points="418,308 458,308" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="848,308 888,308" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="653,367 653,397 507,397 507,442" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="48" y="418" font-family="Microsoft YaHei, sans-serif" font-size="21" fill="#142f40" font-weight="600" text-anchor="start">核心处理层</text>
+<rect x="48" y="442" width="278" height="144" rx="9" fill="#f1f5f8" stroke="#d0dbe4" stroke-width="2"/>
+<text x="187.0" y="476" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">采集与数据质量</text>
+<text x="187.0" y="506" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">SDK 样本 / 八通道投影</text>
+<text x="187.0" y="533" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">连续性 / 缺口 / 格式检查</text>
+<text x="187.0" y="560" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">阻抗仅参考</text>
+<rect x="368" y="442" width="278" height="144" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="507.0" y="476" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">滤波与样本调度</text>
+<text x="507.0" y="506" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">原版 FIR / 连续 SOS</text>
+<text x="507.0" y="533" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">2.5 秒窗 / 步长 50 或 100</text>
+<text x="507.0" y="560" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">窗口边界与 UI 刷新解耦</text>
+<rect x="688" y="442" width="278" height="144" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="827.0" y="476" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">FBCCA 与判决</text>
+<text x="827.0" y="506" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">六目标评分 / 明确评分单位</text>
+<text x="827.0" y="533" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">最高分 + 分差 / 单次接受</text>
+<text x="827.0" y="560" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">纯计算拒识策略</text>
+<rect x="1008" y="442" width="264" height="144" rx="9" fill="#f1f5f8" stroke="#d0dbe4" stroke-width="2"/>
+<text x="1140.0" y="476" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">反馈与诊断</text>
+<text x="1140.0" y="506" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">选中框或无框</text>
+<text x="1140.0" y="533" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">得分 / 原因 / 绘制 FPS</text>
+<text x="1140.0" y="560" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">不输出文本或外设命令</text>
+<polyline points="326,512 368,512" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="646,512 688,512" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="966,512 1008,512" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="48" y="648" width="278" height="138" rx="9" fill="#f1f5f8" stroke="#d0dbe4" stroke-width="2"/>
+<text x="187.0" y="682" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">本地设备接入</text>
+<text x="187.0" y="712" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">Synchroni 桥接批次</text>
+<text x="187.0" y="739" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">独立心跳 / 进程与设备状态</text>
+<text x="187.0" y="766" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">.NET 采集适配器</text>
+<polyline points="187,648 187,586" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="368" y="648" width="598" height="138" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="667.0" y="682" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">会话记录与可追溯存储</text>
+<text x="667.0" y="712" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">分块二进制样本与索引 / NDJSON 事件</text>
+<text x="667.0" y="739" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">参数快照 / 帧与标签 / 时钟模型 / 完成状态</text>
+<text x="667.0" y="766" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">有界后台写盘 · CRC 与恢复 · 旧记录兼容</text>
+<rect x="1008" y="648" width="264" height="138" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="1140.0" y="682" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">时钟映射</text>
+<text x="1140.0" y="712" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">样本索引 → 接收时间</text>
+<text x="1140.0" y="739" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">呈现时钟 → 主机时钟</text>
+<text x="1140.0" y="766" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">稳健回归 / 质量证据</text>
+<polyline points="1008,716 966,716" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="326,716 368,716" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="828,586 828,648" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="1080,367 1300,367 1300,815 667,815 667,786" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)" stroke-dasharray="7 6"/>
+<rect x="48" y="870" width="918" height="125" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="507.0" y="904" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">回放与科研导出</text>
+<text x="507.0" y="934" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">相同样本调度与连续段 · 候选评估 · 因果时间与现场轨迹</text>
+<text x="507.0" y="961" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">BrainVision 三件套及附属元数据 / MNE 读回验收</text>
+<polyline points="667,786 667,870" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<polyline points="48,928 22,928 22,615 507,615 507,586" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)" stroke-dasharray="7 6"/>
+<text x="190" y="845" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">离线复用处理链</text>
+<rect x="1008" y="870" width="264" height="125" rx="9" fill="#faf6ee" stroke="#e6d9c3" stroke-width="2"/>
+<text x="1140.0" y="904" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">后续应用边界</text>
+<text x="1140.0" y="934" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">脑控小车 / 机械手</text>
+<text x="1140.0" y="961" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">复用核心组件</text>
+<text x="1140.0" y="988" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">插件宿主另立版本</text>
+<text x="48" y="1047" font-family="Microsoft YaHei, sans-serif" font-size="18" fill="#62717d" font-weight="400" text-anchor="start">实线表示主要依赖与数据流；虚线表示跨层记录或离线复用。新增模块尚待实现。</text>
+</svg>

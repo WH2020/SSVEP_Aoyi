@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="835" viewBox="0 0 1320 835">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#526779"/></marker></defs>
+<rect width="100%" height="100%" fill="white"/>
+<text x="48" y="43" font-family="Microsoft YaHei, sans-serif" font-size="30" fill="#142f40" font-weight="600" text-anchor="start">实验会话状态与丢样恢复</text>
+<text x="48" y="80" font-family="Microsoft YaHei, sans-serif" font-size="19" fill="#62717d" font-weight="400" text-anchor="start">设备连接状态单独管理；拒识、阻抗和短时丢样均不等于断开连接。</text>
+<rect x="48" y="140" width="265" height="135" rx="9" fill="#eff3f7" stroke="#d0dbe4" stroke-width="2"/>
+<text x="180.5" y="174" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">准备 Preparing</text>
+<text x="180.5" y="204" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">设备 / 八通道 / 参数检查</text>
+<text x="180.5" y="231" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">冻结快照并创建记录</text>
+<rect x="418" y="140" width="430" height="135" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="633.0" y="174" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">运行 Running</text>
+<text x="633.0" y="204" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">等待数据 → 滤波预热 → 识别</text>
+<text x="633.0" y="231" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">单次通过：有框；拒识：清框</text>
+<rect x="988" y="140" width="280" height="135" rx="9" fill="#eff3f7" stroke="#d0dbe4" stroke-width="2"/>
+<text x="1128.0" y="174" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">暂停 Paused</text>
+<text x="1128.0" y="204" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">无样本 / 心跳或呈现异常</text>
+<text x="1128.0" y="231" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">清框并保留当前快照</text>
+<text x="1128.0" y="258" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">状态恢复后手动继续</text>
+<polyline points="313,196 418,196" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="365" y="181" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">开始</text>
+<polyline points="848,175 988,175" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="918" y="156" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">暂停或呈现中断</text>
+<polyline points="988,244 848,244" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="918" y="267" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">恢复并重置</text>
+<rect x="48" y="350" width="265" height="135" rx="9" fill="#faf6ee" stroke="#e6d9c3" stroke-width="2"/>
+<text x="180.5" y="384" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">准备失败回退</text>
+<text x="180.5" y="414" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">校验或目录创建失败</text>
+<text x="180.5" y="441" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">回滚本次启动资源</text>
+<text x="180.5" y="468" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">保留连接与可编辑草稿</text>
+<polyline points="122,275 122,350" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="88" y="319" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">失败</text>
+<polyline points="249,350 249,275" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="296" y="319" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">修正重试</text>
+<rect x="418" y="350" width="430" height="135" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="633.0" y="384" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">短缺口与丢样处理</text>
+<text x="633.0" y="414" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">计数 → 清框 → 连续段递增</text>
+<text x="633.0" y="441" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">重置 → 预热 → 完整新窗</text>
+<text x="633.0" y="468" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">保持连接，自动恢复识别</text>
+<polyline points="560,275 560,350" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="529" y="319" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">缺口</text>
+<polyline points="724,350 724,275" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="773" y="319" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">有效新窗</text>
+<rect x="48" y="573" width="355" height="130" rx="9" fill="#eff3f7" stroke="#d0dbe4" stroke-width="2"/>
+<text x="225.5" y="607" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">结束写盘 Stopping</text>
+<text x="225.5" y="637" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">取消迟到结果，排空记录</text>
+<text x="225.5" y="664" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">完成前配置仍锁定</text>
+<rect x="495" y="573" width="345" height="130" rx="9" fill="#eef6f5" stroke="#c5d9d8" stroke-width="2"/>
+<text x="667.5" y="607" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">完成 Completed</text>
+<text x="667.5" y="637" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">写盘成功</text>
+<text x="667.5" y="664" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">可以修改方案并开始新会话</text>
+<rect x="932" y="573" width="336" height="130" rx="9" fill="#faf6ee" stroke="#e6d9c3" stroke-width="2"/>
+<text x="1100.0" y="607" font-family="Microsoft YaHei, sans-serif" font-size="25" fill="#142f40" font-weight="600" text-anchor="middle">故障 Faulted</text>
+<text x="1100.0" y="637" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">进程退出 / 真断连 / 格式变化</text>
+<text x="1100.0" y="664" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d5664" font-weight="400" text-anchor="middle">记录失败 / 保存明确证据</text>
+<polyline points="418,238 362,238 362,525 225,525 225,573" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="242" y="513" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">结束或致命故障</text>
+<polyline points="1128,275 1128,518 271,518 271,573" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)" stroke-dasharray="7 6"/>
+<polyline points="403,638 495,638" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="448" y="625" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">成功</text>
+<polyline points="225,703 225,739 1100,739 1100,703" fill="none" stroke="#526779" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="666" y="763" font-family="Microsoft YaHei, sans-serif" font-size="17" fill="#4d6170" font-weight="400" text-anchor="middle">故障结束或写盘失败</text>
+<text x="48" y="810" font-family="Microsoft YaHei, sans-serif" font-size="18" fill="#62717d" font-weight="400" text-anchor="start">恢复使用同一参数快照但增加运行代次；更改参数必须结束后创建新会话。</text>
+</svg>

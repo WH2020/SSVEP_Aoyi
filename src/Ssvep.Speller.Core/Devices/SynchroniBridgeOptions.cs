@@ -13,6 +13,7 @@ public sealed record SynchroniBridgeOptions(
     bool EnableHighPass,
     bool EnableLowPass)
 {
+    public bool UseSampleBatches { get; init; }
     public static SynchroniBridgeOptions CreateDefault()
     {
         return new SynchroniBridgeOptions(

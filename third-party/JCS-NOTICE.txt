@@ -1,0 +1,19 @@
+Additional dependencies in SSVEP Studio Research 0.3.0
+
+jsoncanonicalizer 1.0.0 and es6numberserializer 1.0.0
+Upstream: https://github.com/cyberphone/json-canonicalization/tree/master/dotnet
+Packages: https://www.nuget.org/packages/jsoncanonicalizer/1.0.0
+          https://www.nuget.org/packages/es6numberserializer/1.0.0
+
+Copyright 2018 Anders Rundgren
+Copyright 2006-2019 WebPKI.org (http://webpki.org).
+NumberToJson: Copyright 2006-2018 WebPKI.org (http://webpki.org).
+Number serialization was ported from the Mozilla Rhino project by Anders Rundgren.
+
+Licensed under the Apache License, Version 2.0. See Apache-2.0.txt.
+The NuGet assemblies are used without modification. Studio adds strict JSON input
+validation and specifies the effective fields to include in configuration hashes.
+
+MNE, NumPy, SciPy, and Python rfc8785 are optional external QA dependencies;
+they are not required by the desktop exporter and are not bundled in this release.
+Their versions are pinned in tools/requirements-research-qa.txt.

@@ -5,6 +5,12 @@ import math
 import os
 import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src/Ssvep.Speller.App/Bridges"))
+from synchroni_eeg_bridge import ControlChannel
+health = ControlChannel()
+health.set_state("ready")
 
 p = argparse.ArgumentParser()
 p.add_argument("--device-address", default="good")
@@ -12,7 +18,7 @@ args, _ = p.parse_known_args()
 mode = args.device_address or "good"
 rate = 500 if mode == "500" else 250
 channel_count = 32 if mode == "32" else 8
-print(json.dumps({"type": "meta", "deviceName": "SDK TEST FIXTURE", "deviceAddress": "fixture", "samplingRateHz": rate, "channelCount": channel_count}), flush=True)
+print(json.dumps({"type": "meta", "deviceName": "SDK TEST FIXTURE", "deviceAddress": "fixture", "samplingRateHz": rate, "channelCount": channel_count, "sampleUnit": "uV", "scaleToVolts": 1e-6, "unitSource": "synthetic-fixture"}), flush=True)
 start = time.monotonic()
 index = 0
 triggered = False
@@ -64,4 +70,6 @@ while True:
         print(json.dumps(item, separators=(",", ":")))
         index += 1
     sys.stdout.flush()
+    health.last_callback_ns = time.perf_counter_ns()
+    health.last_sample_index = index - 1
     time.sleep(.02)
