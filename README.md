@@ -2,6 +2,8 @@
 
 第一套 SSVEP 桌面软件的独立入口为 `src/Ssvep.Studio.App`。固定六目标，支持文字、图形、图片内容编辑与方案保存，提供 10–20 电极位置图选通道、手动电极对应表与保存、阻抗参考显示、单次识别选中框和实验记录。原有 `Ssvep.Speller.App` 保留作历史与回归参考。
 
+参数研发分支为 `feature/parameter-research`，目标设计版本为 0.3.0。见[参数研发版本设计](docs/SSVEP参数研发版本设计.md)与[交互原型](docs/prototypes/parameter-research.html)；原型下载后可直接用浏览器打开。本次仅完成设计，桌面程序仍为 0.2.4。
+
 直接运行：从 [GitHub Releases](https://github.com/WH2020/SSVEP_Aoyi/releases) 下载 `SSVEP-Studio-win-x64.zip`，完整解压后双击包内的 **启动软件.cmd**，无需安装 .NET 或 Python 开发环境。请保留整个 `SSVEP-Studio` 文件夹。
 
 本地交付目录的 Windows x64 可运行包为 `outputs/SSVEP-Studio/Ssvep.Studio.exe`，项目根目录的 **启动软件.cmd** 指向此目录。Git 仓库保存源码、测试和文档；运行环境及可运行包通过 Releases 分发。
