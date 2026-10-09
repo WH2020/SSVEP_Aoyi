@@ -59,7 +59,7 @@ public static class ReplayRunner
             }
         }
         var metrics=ReplayEvaluator.Evaluate(results,evidence,original.SamplingRateHz);
-        return new("0.3.0",reader.Manifest.GetProperty("sessionId").GetString()!,reader.Manifest.GetProperty("dataSource").GetString()!,profile.ProfileHash,
+        return new("0.3.1",reader.Manifest.GetProperty("sessionId").GetString()!,reader.Manifest.GetProperty("dataSource").GetString()!,profile.ProfileHash,
             profile.AlgorithmVersion,profile.ScoreVersion,DateTimeOffset.UtcNow,results.Count,metrics,results,reader.Warnings.Distinct().ToArray(),
             Conditions:new(original.RunConfigHash,original.SamplingRateHz,original.ChannelCount,original.Channels,original.Display,original.SampleUnit),
             RecordedFeedback:RecordedFeedbackEvaluator.Evaluate(evidence,original.Profile.ProfileHash));

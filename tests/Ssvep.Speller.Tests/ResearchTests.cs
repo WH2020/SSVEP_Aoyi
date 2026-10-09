@@ -271,6 +271,32 @@ public sealed class ResearchTests
         Assert.Equal(60,plan.Trials.Count(t=>t.Label=="target"));Assert.Equal(11,plan.Trials.Count(t=>t.Label=="no-intent"));
     }
     [Fact]
+    public void PersonalCalibrationRunsFourOrderedGroupsWithFixedIntervals()
+    {
+        var plan=CalibrationPlan.Personal(42);
+        Assert.Equal("sequential-block-v1",plan.Algorithm);
+        Assert.Equal(4,plan.GroupCount); Assert.Equal(24,plan.Trials.Count);
+        Assert.Equal(Enumerable.Range(0,24).Select(i=>(int?)(i%6)),plan.Trials.Select(t=>t.TargetIndex));
+        Assert.Equal(Enumerable.Range(0,24).Select(i=>(int?)(i/6+1)),plan.Trials.Select(t=>t.GroupNumber));
+        Assert.All(plan.Trials,trial=>
+        {
+            Assert.Equal("target",trial.Label); Assert.Equal(1,trial.CueSeconds);
+            Assert.Equal(4,trial.ObserveSeconds); Assert.Equal(.5,trial.WaitSeconds);
+        });
+        Assert.Equal(132,plan.Trials.Sum(t=>t.CueSeconds+t.ObserveSeconds+t.WaitSeconds));
+        Assert.Equal(plan.Trials,CalibrationPlan.Personal(99).Trials);
+    }
+    [Fact]
+    public void PreviousCalibrationTrialsRemainReadable()
+    {
+        var old=JsonSerializer.Deserialize<CalibrationTrial>("""{"trialId":"trial-001","label":"target","targetIndex":0,"cueSeconds":2,"observeSeconds":4}""",CanonicalJson.Options)!;
+        Assert.Equal(0,old.WaitSeconds); Assert.Null(old.GroupNumber);
+        var trial=CalibrationPlan.Personal(7).Trials[0];
+        var replacement=trial with {TrialId="trial-001-r1",ReplacesTrialId=trial.TrialId};
+        Assert.Equal(1,replacement.GroupNumber); Assert.Equal(.5,replacement.WaitSeconds);
+        Assert.Equal(replacement,JsonSerializer.Deserialize<CalibrationTrial>(JsonSerializer.Serialize(replacement,CanonicalJson.Options),CanonicalJson.Options));
+    }
+    [Fact]
     public async Task SimulationAndUnplannedSessionsCannotGrantLocalVerification()
     {
         string folder=Temp();

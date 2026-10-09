@@ -138,7 +138,7 @@ internal static class ResearchRegressions
     }
     private static async Task ResearchUi()
     {
-        var window=new MainWindow {Left=-10000,Top=-10000,Width=1280,Height=840,ShowInTaskbar=false};window.Show();
+        var window=new MainWindow {Left=-10000,Top=-10000,Width=1280,Height=840,ShowInTaskbar=false,ShowActivated=false};window.Show();
         try
         {
             void Click(string name)=>((Button)window.FindName(name)).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -182,7 +182,7 @@ internal static class ResearchRegressions
     private static async Task ReplayUi()
     {
         string source=Directory.GetDirectories(Path.Combine(output,"R5-research-ui","sessions")).Single();
-        var window=new MainWindow {Left=-10000,Top=-10000,Width=1280,Height=840,ShowInTaskbar=false};window.Show();
+        var window=new MainWindow {Left=-10000,Top=-10000,Width=1280,Height=840,ShowInTaskbar=false,ShowActivated=false};window.Show();
         try
         {
             ((CheckBox)window.FindName("ResearchToggle")).IsChecked=true;

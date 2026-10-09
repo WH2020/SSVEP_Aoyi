@@ -1,10 +1,12 @@
 # SSVEP 参数研发版架构设计
 
-文档版本 1.1 · 目标软件版本 0.3.0 · 2026-10-02 · 状态：研发实施稿
+文档版本 1.2 · 目标软件版本 0.3.1 · 2026-10-09 · 状态：研发实施稿
 
 本文将[产品需求](SSVEP参数研发版PRD.md)落实为模块、配置、数据流、会话状态和验证方案。以 0.2.4 的 WPF 应用、Synchroni SDK 桥接和 FBCCA 为基础，采用模块化桌面单体，复用同一识别链完成在线识别与回放。0.3.0 已形成工程实现；设计中的职责在实现时作了类名与文件组织合并，准确文件映射、实现差异和验证边界见[实施记录](SSVEP参数研发版实施记录.md)。Word 1.1 保留原始设计稿。
 
 1.1 修订将识别改为样本索引驱动，补齐时钟映射、RenderingTime、JCS、桥接健康、二进制样本和 BrainVision，并补上 Preparing 失败回退。本文取代 1.0 中的 UI 定时取窗、逐样本 NDJSON 和虚拟时间选窗设计。
+
+1.2 修订普通个人校准：四组顺序目标，提示 1 秒、实际反馈 4 秒、等待 0.5 秒；增加独立提示框和反馈显示约束，识别调度仍按样本推进。
 
 ## 1 架构目标与约束
 
@@ -78,7 +80,7 @@ flowchart TB
 | 新增 SampleClockMapper 与 ClockDomainMapper | 样本到主机、Python 到 .NET、呈现到主机的模型与质量 | FR15 |
 | Classification 与新增 StreamingFilterBank | 基线 FIR、连续 SOS、FBCCA 与评分版本 | FR05、FR07 |
 | 新增 SelectionPolicy 与现有 SessionController | 纯判决与拒识；会话状态、结果时效检查 | FR07 |
-| 新增 CalibrationScheduler | 平衡随机试次、提示、休息与补采 | FR09、FR10 |
+| 新增 CalibrationScheduler | 普通校准四组顺序试次、独立测试平衡随机试次、提示、休息与补采 | FR09、FR10 |
 | StudioRecorder 与新增 BinarySampleStore | 分块样本、事件、时钟模型、版本与完成状态 | FR03、FR10、FR13 |
 | 新增 SessionReader 与 BrainVisionExporter | 二进制及旧记录读取、科研格式与附属元数据 | FR13、FR16 |
 | 新增 ReplayRunner 与 ReplayEvaluator | 原顺序处理、候选搜索、分组和指标 | FR11、FR12 |
@@ -274,7 +276,9 @@ samples.idx 保存块偏移、序号、索引范围和 Epoch，支持定位回�
 
 ## 8 校准与回放架构
 
-CalibrationScheduler 生成平衡随机目标序列、提示阶段、注视阶段、无意图区间和休息阶段；UI 按其计划呈现，刺激回调确认实际标记。暂停会中断当前试次并标记待补采，旧试次保留排除原因；恢复不把暂停前后拼成一段有效注视。
+CalibrationPlan.Personal 生成四组顺序目标 1→6，共 24 个试次，包含组号及固定 CueSeconds=1、ObserveSeconds=4、WaitSeconds=0.5。独立测试仍使用平衡随机试次及十一分钟无意图区间。CalibrationController 按准备、提示、反馈、等待、下一试次推进；StudioStimulusView 在提示阶段以黄色框标出目标，反馈阶段按真实分类结果显示绿色框，等待阶段清框。提示和等待不闪烁，整体 RenderingTime 相位基准不中断，识别窗口不按 UI 阶段重新调度。
+
+CuePresented 回执开启阶段计时；切换到反馈或等待时，用新画面的绘制回执记录上一阶段结束和下一阶段开始。反馈显示要求最新分类窗口的首样本索引不早于 observe-start 映射位置，防止前一目标的结果进入下一试次；回放继续只评估完整落在观察区间内的窗口。绘制记录保存真正画出的识别框，黄色提示框不记作识别结果。暂停或数据中断影响提示、反馈时排除当前试次并排队补采；等待期间暂停保留已结束的反馈数据。取消清除待绘制阶段与提示状态。旧试次保留排除原因，补采继承目标、组号和时长；恢复不把暂停前后拼成一段有效注视。
 
 标签的有效区间、过渡排除、窗口取值规则在测试前固定。含转移或无意图交界的窗口按协议单列，不在看到结果后移动标签边界。拟合阈值时按 TrialId 或 SessionId 分组，不把同一试次的重叠窗口分到不同集合。
 

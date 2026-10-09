@@ -23,7 +23,12 @@ public sealed class StudioStimulusView : FrameworkElement
     private string cueText = "";
     private long cueVersion;
     private long drawnCueVersion = -1;
+    private bool feedbackEnabled = true;
     public string CueText { get => cueText; set { cueText=value; cueVersion++; InvalidateVisual(); } }
+    public string? CueTargetId { get; private set; }
+    public bool StimulusEnabled { get; private set; } = true;
+    public bool FeedbackEnabled { get => feedbackEnabled; set { if(feedbackEnabled==value) return; feedbackEnabled=value; InvalidateVisual(); } }
+    public string? PresentedTargetId => FeedbackEnabled?selected:null;
     public event Action<string,double,double>? CuePresented;
     public event Action<double>? FrameRendered;
     public event Action<double,double,string?,long>? PresentationRendered;
@@ -33,6 +38,16 @@ public sealed class StudioStimulusView : FrameworkElement
         targets = Array.AsReadOnly(value.ToArray()); InvalidateVisual();
     }
     public string? SelectedTargetId { get => selected; set { if (selected != value) { selected = value; InvalidateVisual(); } } }
+
+    public void SetCalibrationPresentation(string text,string? cueTarget,bool stimulate)
+    {
+        CueTargetId=cueTarget; StimulusEnabled=stimulate; FeedbackEnabled=false; CueText=text;
+    }
+
+    public void ClearCalibrationPresentation()
+    {
+        SetCalibrationPresentation("",null,true); FeedbackEnabled=true;
+    }
 
     public StudioStimulusView()
     {
@@ -82,6 +97,9 @@ public sealed class StudioStimulusView : FrameworkElement
         base.OnRender(dc);
         dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(16, 25, 43)), null, new Rect(RenderSize));
         if (content is null || ActualWidth < 100 || ActualHeight < 100) return;
+        string drawnCue=cueText; long drawnVersion=cueVersion;
+        string? drawnSelection=PresentedTargetId,drawnCueTarget=CueTargetId;
+        bool stimulate=running&&StimulusEnabled;
         double seconds = clock.PhaseSeconds;
         double gap = 28, pad = 32;
         double width = (ActualWidth - pad * 2 - gap * 2) / 3;
@@ -91,7 +109,7 @@ public sealed class StudioStimulusView : FrameworkElement
             var item = content.Targets[i];
             var cell = new Rect(pad + i % 3 * (width + gap), pad + i / 3 * (height + gap), width, height);
             var flicker = new Rect(cell.X + 6, cell.Y + 6, cell.Width - 12, Math.Max(32, cell.Height - 44));
-            double luminance = running ? StimulusPresentation.CalculateLuminance(
+            double luminance = stimulate ? StimulusPresentation.CalculateLuminance(
                 targets[i].FrequencyHz, targets[i].PhaseRadians, seconds) : .88;
             byte grey = (byte)Math.Round(30 + luminance * 215);
             dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromRgb(grey, grey, grey)), null, flicker, 8, 8);
@@ -105,16 +123,18 @@ public sealed class StudioStimulusView : FrameworkElement
                 double scale = Math.Min((flicker.Width - 30) / bitmap.PixelWidth, (flicker.Height - 24) / bitmap.PixelHeight);
                 var bounds = new Rect(flicker.X + (flicker.Width - bitmap.PixelWidth * scale) / 2,
                     flicker.Y + (flicker.Height - bitmap.PixelHeight * scale) / 2, bitmap.PixelWidth * scale, bitmap.PixelHeight * scale);
-                dc.PushOpacity(running ? .15 + .85 * luminance : 1); dc.DrawImage(bitmap, bounds); dc.Pop();
+                dc.PushOpacity(stimulate ? .15 + .85 * luminance : 1); dc.DrawImage(bitmap, bounds); dc.Pop();
             }
             dc.Pop();
             DrawText(dc, item.Name, new Rect(cell.X, cell.Bottom - 32, cell.Width, 28), Brushes.LightGray, 13);
-            if (item.Id == selected)
+            if (item.Id == drawnCueTarget)
+                dc.DrawRoundedRectangle(null,new Pen(new SolidColorBrush(Color.FromRgb(255,196,70)),5),
+                    new Rect(cell.X,cell.Y,cell.Width,cell.Height-32),12,12);
+            if (item.Id == drawnSelection)
                 dc.DrawRoundedRectangle(null, new Pen(new SolidColorBrush(Color.FromRgb(64, 224, 190)), 4),
                     new Rect(cell.X, cell.Y, cell.Width, cell.Height - 32), 12, 12);
         }
         // Selection borders or layout updates can redraw within the same composition frame.
-        string drawnCue=cueText; long drawnVersion=cueVersion;
         if (!string.IsNullOrEmpty(drawnCue))
             DrawText(dc,drawnCue,new Rect(0,ActualHeight/2-19,ActualWidth,38),Brushes.White,16);
         // A cue may redraw within one composition frame. Acknowledge the text that was
@@ -128,7 +148,7 @@ public sealed class StudioStimulusView : FrameworkElement
         {
             lastRecordedRenderTime = lastRenderTime;
             FrameRendered?.Invoke(seconds);
-            PresentationRendered?.Invoke(lastRenderTime.TotalSeconds, seconds, selected, clock.Epoch);
+            PresentationRendered?.Invoke(lastRenderTime.TotalSeconds, seconds, drawnSelection, clock.Epoch);
         }
     }
 

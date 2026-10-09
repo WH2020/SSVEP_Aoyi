@@ -130,7 +130,7 @@ public sealed class StudioRecorder
             }
         var manifest=new
         {
-            schemaVersion=2,softwareVersion="0.3.0",sessionId=SessionId,name=context.Content.Name,startedAt=started,endedAt=ended,completed,status,failureReason=reason,
+            schemaVersion=2,softwareVersion="0.3.1",sessionId=SessionId,name=context.Content.Name,startedAt=started,endedAt=ended,completed,status,failureReason=reason,
             dataSource=simulation ? "simulation" : "synchroni-sdk",profile=StudioRuntimeProfile.Version,
             samplingRateHz=context.SamplingRateHz,channelCount=context.ChannelCount,windowSeconds=2.5,
             channels=context.Channels,electrodeBindings=context.ElectrodeBindings,targets=context.Profile.Targets().Select(t => new {t.Id,t.FrequencyHz,t.PhaseRadians}),

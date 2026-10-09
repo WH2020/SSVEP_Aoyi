@@ -62,6 +62,7 @@ public sealed class StudioRuntime : IAsyncDisposable
     private BridgeHealthKind? previousHealth;
     private long validWindows;
     private long rejectedWindows;
+    private long lastDecisionFirstSampleIndex;
     public bool IsOfflineBusy { get; private set; }
     private sealed class Work(ResearchPipeline pipeline,ScheduledWindow window,StudioRecorder owner,long generation,long run,double arrived)
     {
@@ -95,6 +96,7 @@ public sealed class StudioRuntime : IAsyncDisposable
     public RunContext? ActiveContext { get { lock(dataGate) return context; } }
     public ResearchScores? LastScores { get; private set; }
     public SelectionEvaluation? LastDecision { get; private set; }
+    public long? LastDecisionFirstSampleIndex { get { lock(dataGate) return LastScores is null?null:lastDecisionFirstSampleIndex; } }
     public double? ClassificationMilliseconds { get; private set; }
     public ClockModel? SampleClock { get { lock(dataGate) return sampleClock?.Current; } }
     public ClockModel? RenderClock { get { lock(dataGate) return renderClock.Current; } }
@@ -432,6 +434,7 @@ public sealed class StudioRuntime : IAsyncDisposable
                     if(finished-job.Arrived>1) { CancelWindow(job,"Overload"); Pause("识别结果过期，请检查系统负载后恢复"); continue; }
                     var decision=SelectionPolicy.Evaluate(scores.Result,context!.Profile.Decision);
                     bool accepted=Session.ApplyEvaluation(job.Generation,job.Window.Window.LastSampleIndex,decision);
+                    lastDecisionFirstSampleIndex=job.Window.Window.FirstSampleIndex;
                     LastScores=scores; LastDecision=decision; ClassificationMilliseconds=(finished-started)*1000;
                     validWindows++; if(!accepted) rejectedWindows++;
                     recorder!.Record("recognition",new {run=job.Run,job.Window.Ordinal,job.Window.Continuity,job.Window.Anchor,
