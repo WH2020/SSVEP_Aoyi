@@ -27,10 +27,10 @@ internal static class Program
             MainWindow? window = null;
             try
             {
-                if (args.Length > 1 && args[1] == "--calibration-readiness")
+                if (args.Length > 1 && args[1] is "--calibration-readiness" or "--calibration-groups")
                 {
                     app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-                    exit = await CalibrationReadinessChecks.Run(output);
+                    exit = await CalibrationReadinessChecks.Run(output,args[1]=="--calibration-groups");
                     return;
                 }
                 if (args.Length > 1 && args[1] == "--calibration")

@@ -6,7 +6,7 @@
 
 ## 0.3.2 校准准备修复
 
-用户记录中已有连续脑电与识别结果，但样本时钟 P95 残差约 25–31 毫秒，被原拟合器标为 `Degraded`。旧校准入口要求样本与呈现时钟同时为 `Estimated`，导致始终没有试次标记。另一个问题是首次提示之前暂停时，界面仍显示笼统等待消息。
+用户记录中已有连续脑电与识别结果，但样本时钟 P95 残差约 25–31 毫秒，被原拟合器标为 `Degraded`。旧校准入口要求样本与呈现时钟同时为 `Estimated`，会卡在首次准备或试次衔接处。0.3.1 记录进一步显示，第一组六目标完成后，样本时钟残差在等待末尾升至 20.14 毫秒；其后约 43 秒仍有画面绘制和 218 次识别，却没有第二组试次。另一个问题是首次提示之前暂停时，界面仍显示笼统等待消息。
 
 新增 `CalibrationClockPolicy` 检查映射的观测量、新鲜度、速率与残差；成熟且有界抖动的映射可以启动普通校准，同时保留原时钟质量并标记 `EstimatedWithJitter`。无效映射仍阻止试次开始，并显示具体原因。暂停、数据窗口重新积累或映射不可用时清除提示和反馈；受影响的未完成试次按原规则补采，已完成反馈后的等待保留试次。
 
@@ -19,6 +19,12 @@ dotnet run --project tests/Ssvep.Studio.Smoke -c Release -- outputs/calibration-
 ```
 
 四组共 24 次真实 WPF 绘制校准，以及暂停恢复、等待保留已完成试次、走神补采和取消回归通过，结果位于 `outputs/calibration-032/full`。新抖动场景导出的两段、8 通道、3744 个样本通过 MNE 1.10.2 独立读回；精度受限事件留在附属表，未写入 `.vmrk`，最大幅值误差约 `7.63e-13 V`。本次没有重新做真人效果或物理刺激锁时验证。
+
+针对组间停顿另增 `--calibration-groups` 回归：第一组以正常时钟开始，在第六个目标的提示框出现时注入 34 毫秒接收抖动，持续到第四组完成。24 个试次均完成且没有额外排除，三个组间从前一组反馈结束到下一组提示绘制均约 0.533 秒；下一组标签如实为 `EstimatedWithJitter`。所有试次的回放与真实绘制反馈可计算，导出保留正常与精度受限两类标签。结果与逐组耗时位于 `outputs/calibration-032/group-transitions`。此项验证运行于已有 0.3.2 逻辑，无需另改组间流程。
+
+```powershell
+dotnet run --project tests/Ssvep.Studio.Smoke -c Release -- outputs/calibration-032/group-transitions --calibration-groups
+```
 
 独立运行包为 `outputs/SSVEP-Studio-Research`。通过项目根目录入口实测启动 0.3.2、传递研发模式参数并正常关闭，测试数据目录隔离，结果保存在 `outputs/calibration-032/entry/result.json`。随包 5801 个文件的 SHA256 校验通过。
 
