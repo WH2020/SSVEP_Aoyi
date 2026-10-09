@@ -27,6 +27,12 @@ internal static class Program
             MainWindow? window = null;
             try
             {
+                if (args.Length > 1 && args[1] == "--calibration-readiness")
+                {
+                    app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                    exit = await CalibrationReadinessChecks.Run(output);
+                    return;
+                }
                 if (args.Length > 1 && args[1] == "--calibration")
                 {
                     app.ShutdownMode = ShutdownMode.OnExplicitShutdown;

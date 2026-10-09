@@ -100,6 +100,8 @@ public sealed class StudioRuntime : IAsyncDisposable
     public double? ClassificationMilliseconds { get; private set; }
     public ClockModel? SampleClock { get { lock(dataGate) return sampleClock?.Current; } }
     public ClockModel? RenderClock { get { lock(dataGate) return renderClock.Current; } }
+    public CalibrationTimingStatus CalibrationTiming
+    { get { lock(dataGate) return CalibrationClockPolicy.Evaluate(sampleClock?.Current,renderClock.Current,samplingRate,Now); } }
     public BridgeHealthSnapshot? BridgeHealth => stream?.Health;
     public long ValidWindows => Interlocked.Read(ref validWindows);
     public long RejectedWindows => Interlocked.Read(ref rejectedWindows);

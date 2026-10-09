@@ -135,7 +135,7 @@ public sealed class ReplayPanel : UserControl
         Run(async token=>
         {
             var result=await Task.Run(()=>BrainVisionExporter.Export(folder!,destination,token),token);
-            status.Text=$"已导出 {result.SegmentCount} 个连续段、{result.SampleCount} 个样本。需用随包 MNE 脚本读回核验。\n{result.Directory}";
+            status.Text=$"已导出 {result.SegmentCount} 个连续段、{result.SampleCount} 个样本。需用随包 MNE 脚本读回核验。\n{result.Directory}\n"+string.Join("\n",result.Warnings);
         });
     }
     private static string Percent(double? value)=>value is double n?$"{n:P1}":"缺少标签/有效试次";

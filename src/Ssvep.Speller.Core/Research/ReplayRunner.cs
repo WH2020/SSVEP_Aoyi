@@ -59,7 +59,7 @@ public static class ReplayRunner
             }
         }
         var metrics=ReplayEvaluator.Evaluate(results,evidence,original.SamplingRateHz);
-        return new("0.3.1",reader.Manifest.GetProperty("sessionId").GetString()!,reader.Manifest.GetProperty("dataSource").GetString()!,profile.ProfileHash,
+        return new("0.3.2",reader.Manifest.GetProperty("sessionId").GetString()!,reader.Manifest.GetProperty("dataSource").GetString()!,profile.ProfileHash,
             profile.AlgorithmVersion,profile.ScoreVersion,DateTimeOffset.UtcNow,results.Count,metrics,results,reader.Warnings.Distinct().ToArray(),
             Conditions:new(original.RunConfigHash,original.SamplingRateHz,original.ChannelCount,original.Channels,original.Display,original.SampleUnit),
             RecordedFeedback:RecordedFeedbackEvaluator.Evaluate(evidence,original.Profile.ProfileHash));
@@ -76,11 +76,12 @@ public static class ReplayEvaluator
         foreach(var group in markers.GroupBy(m=>m.TrialId))
         {
             var start=group.FirstOrDefault(m=>m.Phase=="observe-start"); var end=group.LastOrDefault(m=>m.Phase=="observe-end");
-            if(start is null||end is null||excluded.Contains(group.Key)||start.EstimatedSampleIndex is null||end.EstimatedSampleIndex is null
-                ||start.TimingQuality!="Estimated"||end.TimingQuality!="Estimated"||end.EstimatedSampleIndex<=start.EstimatedSampleIndex)
+            if(start is null||end is null||excluded.Contains(group.Key)||!TrialTiming.IsMapped(start)||!TrialTiming.IsMapped(end)
+                ||TrialTiming.LastUsableSample(end)<=TrialTiming.FirstUsableSample(start))
             { outcomes.Add(new(group.Key,start?.Label??"unknown",start?.TargetId,null,false,false,null,"excluded-or-unmapped")); continue; }
             // Only complete windows inside the instructed interval count, with no reset at target changes.
-            var valid=decisions.Where(d=>d.FirstSampleIndex>=start.EstimatedSampleIndex&&d.LastSampleIndex<=end.EstimatedSampleIndex).ToArray();
+            double firstUsable=TrialTiming.FirstUsableSample(start),lastUsable=TrialTiming.LastUsableSample(end);
+            var valid=decisions.Where(d=>d.FirstSampleIndex>=firstUsable&&d.LastSampleIndex<=lastUsable).ToArray();
             if(start.Label=="target")
             {
                 var first=valid.FirstOrDefault(d=>d.Decision.Accepted);
@@ -96,7 +97,7 @@ public static class ReplayEvaluator
                     var current=valid[i];
                     if(i>0&&(current.Run!=valid[i-1].Run||current.Continuity!=valid[i-1].Continuity||current.LastSampleIndex-valid[i-1].LastSampleIndex!=rate/5))
                     {previous=null;episode=0;}
-                    double seconds=Math.Min(.2,Math.Max(0,(end.EstimatedSampleIndex.Value-current.LastSampleIndex)/rate));
+                    double seconds=Math.Min(.2,Math.Max(0,(lastUsable-current.LastSampleIndex)/rate));
                     if(i+1<valid.Length) seconds=Math.Min(.2,Math.Max(0,(valid[i+1].LastSampleIndex-current.LastSampleIndex)/(double)rate));
                     noIntentSeconds+=seconds;
                     string? target=current.Decision.TargetId;
@@ -110,10 +111,11 @@ public static class ReplayEvaluator
         var targets=outcomes.Where(t=>t.Label=="target"&&t.Status is "evaluated" or "no-valid-window").ToArray();
         int accepted=targets.Count(t=>t.Covered),correct=targets.Count(t=>t.Correct);
         var delays=targets.Where(t=>t.Correct&&t.DelaySeconds is not null).Select(t=>t.DelaySeconds!.Value).ToArray();
-        return new(markers.Length==0?"缺少标签":targets.Length==0?"缺少可映射有效试次":"算法回放估计",outcomes,
+        bool limited=markers.Any(m=>m.TimingQuality==CalibrationClockPolicy.LimitedQuality);
+        return new(markers.Length==0?"缺少标签":targets.Length==0?"缺少可映射有效试次":limited?"算法回放估计（含时钟精度受限标签）":"算法回放估计",outcomes,
             Wilson(correct,accepted),Wilson(accepted,targets.Length),noIntentSeconds>0?falseTriggers/(noIntentSeconds/60):null,
             falseTriggers,noIntentSeconds/60,delays.Length==0?null:RobustClockMapper.Quantile(delays,.5),delays.Length==0?null:RobustClockMapper.Quantile(delays,.95),
-            wrongSeconds,"sample-index estimate; complete windows only; not measured display latency; fixed acquisition/display delay uncalibrated",
+            wrongSeconds,"sample-index estimate; complete windows inside recorded P95 alignment margins; not measured display latency; fixed acquisition/display delay uncalibrated",
             Poisson(falseTriggers,noIntentSeconds/60),longestWrong,
             Enumerable.Range(1,6).ToDictionary(t=>$"T{t}",t=>(IReadOnlyDictionary<string,int>)Enumerable.Range(1,6).Select(s=>$"T{s}").Append("rejected")
                 .ToDictionary(s=>s,s=>targets.Count(tr=>tr.TargetId==$"T{t}"&&(tr.FirstSelection??"rejected")==s))));

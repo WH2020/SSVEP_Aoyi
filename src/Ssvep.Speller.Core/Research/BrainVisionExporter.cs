@@ -19,6 +19,8 @@ public static class BrainVisionExporter
         if(context.ScaleToVolts is not double scale || context.SampleUnit=="unknown") throw new InvalidOperationException("采集单位未知，无法生成带物理单位的科研数据。请保留原始记录并核验 SDK 单位。");
         var events=reader.Events("trial-marker","trial-exclusion","clock-model","clock-observation","filter-reset","state","sample-loss").ToArray();
         var markers=events.Where(e=>e.Kind=="trial-marker").Select(e=>JsonSerializer.Deserialize<TrialMarker>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
+        if(markers.Any(m=>m.TimingQuality==CalibrationClockPolicy.LimitedQuality))
+            reader.Warnings.Add("时钟精度受限的事件保留于 events.tsv，未写入 .vmrk；时间映射及边界余量可追溯。");
         var models=events.Where(e=>e.Kind=="clock-model").Select(e=>JsonSerializer.Deserialize<ClockModel>(e.Data.GetRawText(),CanonicalJson.Options)!).ToDictionary(m=>m.ModelId);
         var names=Enumerable.Range(0,context.ChannelCount).Select(c=>context.ElectrodeBindings.FirstOrDefault(b=>b.ChannelIndex==c)?.Electrode??$"CH{c+1}").ToArray();
         string folder=Path.Combine(outputRoot,"BrainVision-"+reader.Manifest.GetProperty("sessionId").GetString()+"-"+Guid.NewGuid().ToString("N")[..8]);
@@ -80,8 +82,8 @@ public static class BrainVisionExporter
             if(segments.Count==0) throw new InvalidDataException("没有可导出的连续有效样本。");
             File.WriteAllText(Path.Combine(folder,"channels.tsv"),"index\tname\tsource_unit\tscale_to_volts\tposition_source\n"+
                 string.Join("\n",names.Select((name,i)=>$"{i}\t{Tsv(name)}\t{Tsv(context.SampleUnit)}\t{scale.ToString("R",Invariant)}\t{(context.ElectrodeBindings.Any(b=>b.ChannelIndex==i)?"manual":"unmapped")}")),new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(folder,"events.tsv"),"trial_id\tphase\tlabel\ttarget\thost_seconds\testimated_sample\tmodel_id\ttiming_quality\twritten_to_vmrk\n"+
-                string.Join("\n",markers.Select((m,i)=>$"{Tsv(m.TrialId)}\t{Tsv(m.Phase)}\t{Tsv(m.Label)}\t{Tsv(m.TargetId)}\t{m.HostSeconds.ToString("R",Invariant)}\t{m.EstimatedSampleIndex?.ToString("R",Invariant)}\t{m.ModelId}\t{m.TimingQuality}\t{placed.Contains(i)}")),new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(folder,"events.tsv"),"trial_id\tphase\tlabel\ttarget\thost_seconds\testimated_sample\tmodel_id\ttiming_quality\twritten_to_vmrk\talignment_margin_samples\n"+
+                string.Join("\n",markers.Select((m,i)=>$"{Tsv(m.TrialId)}\t{Tsv(m.Phase)}\t{Tsv(m.Label)}\t{Tsv(m.TargetId)}\t{m.HostSeconds.ToString("R",Invariant)}\t{m.EstimatedSampleIndex?.ToString("R",Invariant)}\t{m.ModelId}\t{m.TimingQuality}\t{placed.Contains(i)}\t{m.AlignmentMarginSamples.ToString("R",Invariant)}")),new UTF8Encoding(false));
             File.WriteAllText(Path.Combine(folder,"clock-models.json"),JsonSerializer.Serialize(models.Values,CanonicalJson.Options));
             File.WriteAllText(Path.Combine(folder,"export-manifest.json"),JsonSerializer.Serialize(new
             {

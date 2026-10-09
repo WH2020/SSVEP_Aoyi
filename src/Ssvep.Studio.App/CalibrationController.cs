@@ -17,6 +17,7 @@ public sealed class CalibrationController
     private int completed;
     private int groups;
     private int planned;
+    private string phaseStatus="";
     public bool IsActive { get; private set; }
     public string Status { get; private set; }="个人校准：目标 1→6，依次完成四组；提示 1 秒 → 实际反馈 4 秒 → 等待 0.5 秒。";
     public event Action? Changed;
@@ -31,24 +32,27 @@ public sealed class CalibrationController
         var plan=independentTest?new CalibrationPlan(selectedSeed,noIntentSeconds:660):CalibrationPlan.Personal(selectedSeed);
         queue.Clear(); foreach(var trial in plan.Trials) queue.Enqueue(trial);
         runtime.RecordEvent("calibration-plan",new {plan.Seed,plan.Trials,plan.GroupCount,purpose=independentTest?"independent-test":"parameter-calibration",
-            runtime.ActiveContext!.Profile.ProfileHash,plan.Algorithm});
+            runtime.ActiveContext!.Profile.ProfileHash,plan.Algorithm,timingPolicy=CalibrationClockPolicy.Version});
         IsActive=true; current=null; pending=null; pendingCue=null; phase="waiting"; completed=0; replacement=0;
         groups=plan.GroupCount; planned=plan.Trials.Count; observeStartSample=null;
-        ShowWaiting("校准准备：等待连续脑电与时钟映射");
+        ShowWaiting(PreparationIssue()??"校准准备：即将显示目标提示框");
     }
 
     public void ObserveState()
     {
         if(!IsActive) return;
         if(!runtime.IsRecording) { Cancel(); return; }
-        if((!runtime.IsRunning||runtime.LastScores is null)&&current is not null)
+        string? issue=PreparationIssue();
+        if(issue is not null)
         {
             // A completed feedback interval is retained if an interruption occurs during its wait.
-            if(phase!="wait") ExcludeCurrent("pause-or-presentation-interruption");
+            if(current is not null&&phase!="wait") ExcludeCurrent(!runtime.IsRunning||runtime.LastScores is null
+                ?"pause-or-presentation-interruption":"clock-mapping-unusable");
             current=null; pending=null; pendingCue=null; phase="waiting";
-            ShowWaiting("校准休息中，恢复实验后继续");
+            ShowWaiting(issue); return;
         }
         UpdateFeedback();
+        UpdatePhaseStatus();
     }
     public void MarkDistracted()
     {
@@ -71,7 +75,31 @@ public sealed class CalibrationController
     }
     private void ShowWaiting(string text)
     {
-        observeStartSample=null; view.SetCalibrationPresentation(text,null,false); Status=text; Changed?.Invoke();
+        observeStartSample=null; phaseStatus="";
+        if(view.CueText!=text||view.CueTargetId is not null||view.StimulusEnabled||view.FeedbackEnabled)
+            view.SetCalibrationPresentation(text,null,false);
+        SetStatus(text);
+    }
+    private string? PreparationIssue()
+    {
+        if(!runtime.IsRunning) return "校准已暂停："+runtime.Session.Message+"；请点击“恢复实验”";
+        if(runtime.LastScores is null)
+        {
+            double seconds=2.5+(runtime.ActiveContext?.WarmupSamples??0)/(double)runtime.SamplingRate;
+            return $"校准准备：正在积累连续脑电窗口（约 {seconds:0.0} 秒，丢样后重新计时）";
+        }
+        var timing=runtime.CalibrationTiming;
+        return timing.Ready?null:timing.Message;
+    }
+    private void SetStatus(string text)
+    {
+        if(Status==text) return;
+        Status=text; Changed?.Invoke();
+    }
+    private void UpdatePhaseStatus()
+    {
+        if(phaseStatus.Length==0) return;
+        SetStatus(phaseStatus+(runtime.CalibrationTiming.Quality==CalibrationClockPolicy.LimitedQuality?" · 时钟精度受限":""));
     }
     private void UpdateFeedback()
     {
@@ -82,8 +110,9 @@ public sealed class CalibrationController
     private void OnFrame(double rendering,double host)
     {
         if(!IsActive||!runtime.IsRunning||pending is not null) return;
-        UpdateFeedback();
         if(phase=="waiting") { NextTrial(); return; }
+        if(PreparationIssue() is not null) { ObserveState(); return; }
+        UpdateFeedback();
         if(current is null) return;
         if(phase=="cue"&&rendering-phaseStarted>=current.CueSeconds)
             SetPhase("observe",current.TargetIndex is int target?$"请注视目标 {target+1} · 实际反馈 4 秒":"保持无意图 · 自然眨眼，不注视刺激目标");
@@ -102,7 +131,8 @@ public sealed class CalibrationController
             view.SetCalibrationPresentation("校准完成",null,false);
             Status=$"校准完成，共 {completed} 个有效试次，可结束实验后进行回放与阈值比较。"; Changed?.Invoke(); return;
         }
-        if(runtime.LastScores is null||runtime.SampleClock?.Quality!="Estimated"||runtime.RenderClock?.Quality!="Estimated") return;
+        string? issue=PreparationIssue();
+        if(issue is not null) { ShowWaiting(issue); return; }
         current=queue.Dequeue();
         SetPhase("cue",current.TargetIndex is int target?$"准备注视目标 {target+1} · 看黄色提示框":"准备保持无意图：看中央空白或目标外");
     }
@@ -119,19 +149,19 @@ public sealed class CalibrationController
         else if(phase=="observe") { Marker("observe-end",rendering,host); completed++; }
         phase=pending; pending=null; pendingCue=null; phaseStarted=rendering;
         var marker=Marker(phase+"-start",rendering,host);
-        observeStartSample=phase=="observe"?marker?.EstimatedSampleIndex:null;
+        observeStartSample=phase=="observe"&&marker is not null&&TrialTiming.IsMapped(marker)?TrialTiming.FirstUsableSample(marker):null;
         string progress=current?.GroupNumber is int group?$"第 {group}/{groups} 组 · 目标 {current.TargetIndex+1}/6 · ":"";
         string retry=current?.ReplacesTrialId is not null?"补采 · ":"";
-        Status=$"{retry}{progress}已完成 {completed}/{planned} · {cue}"; Changed?.Invoke();
+        phaseStatus=$"{retry}{progress}已完成 {completed}/{planned} · {cue}"; UpdatePhaseStatus();
     }
     private TrialMarker? Marker(string mark,double rendering,double drawHost)
     {
         if(current is null) return null;
-        var sample=runtime.SampleClock; var display=runtime.RenderClock;
-        double host=display?.Quality=="Estimated"?display.Estimate(rendering):drawHost;
-        bool mapped=sample?.Quality=="Estimated"&&display?.Quality=="Estimated";
+        var timing=runtime.CalibrationTiming; var sample=timing.SampleClock; var display=timing.RenderClock;
+        bool mapped=timing.Ready;
+        double host=mapped?display!.Estimate(rendering):drawHost;
         var marker=new TrialMarker(current.TrialId,mark,current.Label,current.TargetIndex is int target?$"T{target+1}":null,
-            host,rendering,sample?.ModelId,mapped?sample!.Invert(host):null,mapped?"Estimated":"Uncalibrated",current.ReplacesTrialId,drawHost,display?.ModelId);
+            host,rendering,sample?.ModelId,mapped?sample!.Invert(host):null,timing.Quality,current.ReplacesTrialId,drawHost,display?.ModelId,timing.MarginSamples);
         runtime.RecordMarker(marker); return marker;
     }
 }

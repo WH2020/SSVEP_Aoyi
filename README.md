@@ -2,9 +2,11 @@
 
 第一套 SSVEP 桌面软件的独立入口为 `src/Ssvep.Studio.App`。固定六目标，支持文字、图形、图片内容编辑与方案保存，提供 10–20 电极位置图选通道、手动电极对应表与保存、阻抗参考显示、单次识别选中框和实验记录。原有 `Ssvep.Speller.App` 保留作历史与回归参考。
 
-参数研发分支为 `feature/parameter-research`，软件版本为 **0.3.1**。提供参数方案、连续滤波、样本数驱动识别、时钟映射、独立桥接心跳、校准/独立测试、回放阈值比较、二进制记录和 BrainVision 导出。个人校准按六目标顺序完成四组，每次提示 1 秒、实际反馈 4 秒、等待 0.5 秒。双击项目根目录 **启动参数研发版.cmd**；操作见[研发版使用说明](docs/SSVEP参数研发版使用说明.md)。原版 0.2.4 运行包及入口保留。
+参数研发分支为 `feature/parameter-research`，软件版本为 **0.3.2**。提供参数方案、连续滤波、样本数驱动识别、时钟映射、独立桥接心跳、校准/独立测试、回放阈值比较、二进制记录和 BrainVision 导出。个人校准按六目标顺序完成四组，每次提示 1 秒、实际反馈 4 秒、等待 0.5 秒。双击项目根目录 **启动参数研发版.cmd**；操作见[研发版使用说明](docs/SSVEP参数研发版使用说明.md)。原版 0.2.4 运行包及入口保留。
 
-正式研发文档：[产品需求 PRD](docs/SSVEP参数研发版PRD.md)与[架构设计](docs/SSVEP参数研发版架构设计.md)，设计版本 1.1；实施情况和验证边界见[实施记录](docs/SSVEP参数研发版实施记录.md)。`docs/deliverables` 保留设计阶段 Word 稿；[交互原型](docs/prototypes/parameter-research.html)使用演示数据。
+0.3.2 修复接收时间抖动造成个人校准一直准备的问题；有界抖动允许继续并标明时钟精度受限，等待和暂停显示具体原因，记录及回放保留时间质量与边界余量。
+
+正式研发文档：[产品需求 PRD](docs/SSVEP参数研发版PRD.md)与[架构设计](docs/SSVEP参数研发版架构设计.md)，设计版本 1.3；实施情况和验证边界见[实施记录](docs/SSVEP参数研发版实施记录.md)。`docs/deliverables` 保留设计阶段 Word 稿；[交互原型](docs/prototypes/parameter-research.html)使用演示数据。
 
 直接运行：从 [GitHub Releases](https://github.com/WH2020/SSVEP_Aoyi/releases) 下载 `SSVEP-Studio-win-x64.zip`，完整解压后双击包内的 **启动软件.cmd**，无需安装 .NET 或 Python 开发环境。请保留整个 `SSVEP-Studio` 文件夹。
 
@@ -55,6 +57,6 @@ SDK 协议测试需要附加 `--sdk <python.exe路径>`，测试脚本仅产生�
 - `tests/Ssvep.Studio.EditorSmoke`：真实控件编辑、图片解码和布局检查。
 - `outputs/SSVEP-Studio`：带 .NET 与 Python 运行环境的本地交付目录。
 
-本分支的软件版本为 **0.3.1 参数研发版**。`outputs`、编译缓存、实验记录和本机快捷方式不纳入 Git。工程测试使用合成数据与 SDK 协议夹具；真实设备、个人误决策指标、物理显示锁时及三十分钟实机性能仍需验证。
+本分支的软件版本为 **0.3.2 参数研发版**。`outputs`、编译缓存、实验记录和本机快捷方式不纳入 Git。工程测试使用合成数据与 SDK 协议夹具；真实设备、个人误决策指标、物理显示锁时及三十分钟实机性能仍需验证。
 
 Synchroni SDK 的 MIT 许可及来源说明保存在 `src/Ssvep.Studio.App/Vendor/Synchroni`。

@@ -35,8 +35,9 @@ public static class RecordedFeedbackEvaluator
             if(start is null||end is null||excluded.Contains(group.Key)) continue;
             double a=start.DrawHostSeconds??start.HostSeconds,b=end.DrawHostSeconds??end.HostSeconds;
             if(b<=a) continue;
-            if(start.Label=="target"&&start.EstimatedSampleIndex is double first&&end.EstimatedSampleIndex is double last)
+            if(start.Label=="target"&&TrialTiming.IsMapped(start)&&TrialTiming.IsMapped(end))
             {
+                double first=TrialTiming.FirstUsableSample(start),last=TrialTiming.LastUsableSample(end);
                 var decision=decisions.FirstOrDefault(d=>d.Accepted&&d.First>=first&&d.Last<=last&&d.Time>=a&&d.Time<=b);
                 var frame=decision is null?null:frames.FirstOrDefault(f=>f.Time>=decision.Time&&f.Time<=b&&f.Target==decision.Target);
                 trials.Add(new(group.Key,start.TargetId,decision?.Target,decision?.Target==start.TargetId,
@@ -68,7 +69,8 @@ public static class RecordedFeedbackEvaluator
         }
         double? Q(IEnumerable<double?> values,double q)
         {var valid=values.OfType<double>().ToArray();return valid.Length==0?null:RobustClockMapper.Quantile(valid,q);}
-        return new(frames.Length==0?"缺少绘制回执":markers.Length==0?"缺少标签":"记录中的在线反馈",profileHash,trials,triggers,inherited,total,evaluable,wrong,longest,
+        bool limited=markers.Any(m=>m.TimingQuality==CalibrationClockPolicy.LimitedQuality);
+        return new(frames.Length==0?"缺少绘制回执":markers.Length==0?"缺少标签":limited?"记录中的在线反馈（含时钟精度受限标签）":"记录中的在线反馈",profileHash,trials,triggers,inherited,total,evaluable,wrong,longest,
             ReplayEvaluator.Poisson(triggers,evaluable/60),Q(trials.Where(t=>t.Correct).Select(t=>t.DecisionDelaySeconds),.5),Q(trials.Where(t=>t.Correct).Select(t=>t.DrawDelaySeconds),.5),
             Q(trials.Where(t=>t.Correct).Select(t=>t.DecisionDelaySeconds),.95),Q(trials.Where(t=>t.Correct).Select(t=>t.DrawDelaySeconds),.95));
     }
