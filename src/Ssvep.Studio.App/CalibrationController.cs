@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Ssvep.Speller.Core.Research;
 
 namespace Ssvep.Studio.App;
@@ -13,6 +14,7 @@ public sealed class CalibrationController
     private string? pendingCue;
     private double phaseStarted;
     private double? observeStartSample;
+    private string? heldFeedback;
     private int replacement;
     private int completed;
     private int groups;
@@ -32,9 +34,10 @@ public sealed class CalibrationController
         var plan=independentTest?new CalibrationPlan(selectedSeed,noIntentSeconds:660):CalibrationPlan.Personal(selectedSeed);
         queue.Clear(); foreach(var trial in plan.Trials) queue.Enqueue(trial);
         runtime.RecordEvent("calibration-plan",new {plan.Seed,plan.Trials,plan.GroupCount,purpose=independentTest?"independent-test":"parameter-calibration",
-            runtime.ActiveContext!.Profile.ProfileHash,plan.Algorithm,timingPolicy=CalibrationClockPolicy.Version});
+            runtime.ActiveContext!.Profile.ProfileHash,plan.Algorithm,timingPolicy=CalibrationClockPolicy.Version,
+            targetFeedbackPolicy=TrialFeedbackSelection.Policy});
         IsActive=true; current=null; pending=null; pendingCue=null; phase="waiting"; completed=0; replacement=0;
-        groups=plan.GroupCount; planned=plan.Trials.Count; observeStartSample=null;
+        groups=plan.GroupCount; planned=plan.Trials.Count; observeStartSample=null; heldFeedback=null;
         ShowWaiting(PreparationIssue()??"校准准备：即将显示目标提示框");
     }
 
@@ -70,12 +73,13 @@ public sealed class CalibrationController
     public void Cancel()
     {
         if(IsActive) runtime.RecordEvent("calibration-ended",new {completed,remaining=queue.Count,unfinishedTrial=phase=="wait"?null:current?.TrialId});
-        IsActive=false; current=null; pending=null; pendingCue=null; queue.Clear(); observeStartSample=null;
+        IsActive=false; current=null; pending=null; pendingCue=null; queue.Clear(); observeStartSample=null; heldFeedback=null;
+        view.SelectedTargetId=runtime.IsRunning?runtime.Session.SelectedTargetId:null;
         view.ClearCalibrationPresentation(); Status="校准已停止；原始数据和试次标记保留。"; Changed?.Invoke();
     }
     private void ShowWaiting(string text)
     {
-        observeStartSample=null; phaseStatus="";
+        observeStartSample=null; heldFeedback=null; phaseStatus="";
         if(view.CueText!=text||view.CueTargetId is not null||view.StimulusEnabled||view.FeedbackEnabled)
             view.SetCalibrationPresentation(text,null,false);
         SetStatus(text);
@@ -99,13 +103,34 @@ public sealed class CalibrationController
     private void UpdatePhaseStatus()
     {
         if(phaseStatus.Length==0) return;
-        SetStatus(phaseStatus+(runtime.CalibrationTiming.Quality==CalibrationClockPolicy.LimitedQuality?" · 时钟精度受限":""));
+        SetStatus(phaseStatus+(heldFeedback is not null?" · 本次结果已保持":"")
+            +(runtime.CalibrationTiming.Quality==CalibrationClockPolicy.LimitedQuality?" · 时钟精度受限":""));
     }
     private void UpdateFeedback()
     {
-        // A result from the preceding target, cue or rest must never appear as this trial's feedback.
-        view.FeedbackEnabled=pending is null&&phase=="observe"&&runtime.IsRunning
-            &&observeStartSample is double start&&runtime.LastDecisionFirstSampleIndex is long first&&first>=start;
+        var candidate=runtime.LastRecognition;
+        bool observing=pending is null&&phase=="observe"&&runtime.IsRunning;
+        bool eligible=observing&&observeStartSample is double start&&candidate is not null&&candidate.FirstSampleIndex>=start;
+        if(current?.Label=="target")
+        {
+            // Keep the first eligible feedback shown in this trial. Later windows still run and are recorded.
+            if(heldFeedback is null&&eligible&&candidate!.Decision is {Accepted:true,TargetId:not null})
+            {
+                heldFeedback=candidate.Decision.TargetId;
+                runtime.RecordEvent("trial-feedback",new TrialFeedbackSelection(current.TrialId,heldFeedback,
+                    candidate.FirstSampleIndex,candidate.LastSampleIndex,candidate.HostSeconds,
+                    Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency));
+                UpdatePhaseStatus();
+            }
+            view.SelectedTargetId=heldFeedback;
+            view.FeedbackEnabled=observing&&heldFeedback is not null;
+        }
+        else
+        {
+            // No-intent intervals retain continuous feedback so false-trigger episodes remain measurable.
+            view.SelectedTargetId=eligible&&candidate!.Decision.Accepted?candidate.Decision.TargetId:null;
+            view.FeedbackEnabled=eligible;
+        }
     }
     private void OnFrame(double rendering,double host)
     {
@@ -138,7 +163,7 @@ public sealed class CalibrationController
     }
     private void SetPhase(string next,string cue)
     {
-        pending=next; pendingCue=cue;
+        pending=next; pendingCue=cue; heldFeedback=null;
         view.SetCalibrationPresentation(cue,next=="cue"&&current?.TargetIndex is int target?$"T{target+1}":null,next=="observe");
     }
     private void OnCuePresented(string cue,double rendering,double host)

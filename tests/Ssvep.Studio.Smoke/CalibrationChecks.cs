@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +17,8 @@ internal static class CalibrationChecks
     public static async Task<int> Run(string output)
     {
         var window=new MainWindow {Left=-10000,Top=-10000,Width=1280,Height=840,ShowInTaskbar=false,ShowActivated=false};
+        // App placement centers on Loaded; move only this test window outside the desktop afterwards.
+        window.Loaded+=(_,_)=> { window.Left=-10000; window.Top=-10000; };
         window.Show();
         var results=new List<string>();
         try
@@ -51,6 +54,19 @@ internal static class CalibrationChecks
             await Until(()=>status.Text.Contains("请注视目标 1")&&view.PresentedTargetId=="T2",10000);
             Check(view.CueTargetId is null&&view.StimulusEnabled,"Cue border survived into actual feedback");
             Snapshot(window,Path.Combine(output,"feedback.png"));
+            // Inject subsequent classifier outcomes at the presenter boundary: neither a new target nor rejection may change the held frame.
+            var calibration=(CalibrationController)typeof(MainWindow).GetField("calibration",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(window)!;
+            var snapshot=typeof(StudioRuntime).GetField("lastRecognition",BindingFlags.Instance|BindingFlags.NonPublic)!;
+            var gate=typeof(StudioRuntime).GetField("dataGate",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(window.Runtime)!;
+            var original=window.Runtime.LastRecognition!;
+            foreach(var decision in new[] {new SelectionEvaluation(true,"T4","Accepted",.9,.1,.8),new SelectionEvaluation(false,null,"LowScore",.01,.01,0)})
+            {
+                lock(gate) snapshot.SetValue(window.Runtime,original with {Decision=decision});
+                view.SelectedTargetId=decision.TargetId; calibration.ObserveState();
+                Check(view.PresentedTargetId=="T2"&&view.FeedbackEnabled,"A later classification replaced or cleared the trial's first feedback");
+                Snapshot(window,Path.Combine(output,decision.Accepted?"held-after-new-target.png":"held-after-rejection.png"));
+            }
+            lock(gate) snapshot.SetValue(window.Runtime,original);
             await Until(()=>status.Text.Contains("等待 0.5 秒"),6000);
             Check(!view.StimulusEnabled&&view.CueTargetId is null&&view.PresentedTargetId is null,"Wait did not clear the previous target");
             Snapshot(window,Path.Combine(output,"wait.png"));
@@ -66,6 +82,7 @@ internal static class CalibrationChecks
             var reader=new SessionReader(window.Runtime.LastSessionDirectory!); reader.VerifyFiles();
             var plan=reader.Events("calibration-plan").Single().Data;
             Check(plan.GetProperty("algorithm").GetString()=="sequential-block-v1"&&plan.GetProperty("trials").GetArrayLength()==24,"Incorrect recorded personal plan");
+            Check(plan.GetProperty("targetFeedbackPolicy").GetString()==TrialFeedbackSelection.Policy,"Feedback policy was not recorded");
             var markers=reader.Events("trial-marker").Select(e=>JsonSerializer.Deserialize<TrialMarker>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
             var trials=markers.GroupBy(m=>m.TrialId).ToArray();
             Check(trials.Length==24&&!reader.Events("trial-exclusion").Any(),"Four-group run did not complete exactly 24 uninterrupted trials");
@@ -82,19 +99,26 @@ internal static class CalibrationChecks
                 Check(cueDuration>=1&&cueDuration<1.35&&observeDuration>=4&&observeDuration<4.35&&waitDuration>=.5&&waitDuration<.85,"Incorrect 1 / 4 / 0.5 second cadence");
                 Check(trial.All(m=>m.DrawHostSeconds>0&&m.EstimatedSampleIndex is not null),"Missing drawing or sample-clock evidence");
                 Check(frames.Any(f=>f.Rendering>=observe.RenderingSeconds&&f.Rendering<wait.RenderingSeconds&&f.Selected=="T2"),"An observe interval lost its actual classifier feedback");
+                var shown=frames.Where(f=>f.Rendering>=observe.RenderingSeconds&&f.Rendering<wait.RenderingSeconds).SkipWhile(f=>f.Selected is null).ToArray();
+                Check(shown.All(f=>f.Selected=="T2"),"A target trial changed or cleared its first feedback before the wait");
                 Check(!frames.Any(f=>f.Rendering>=observe.RenderingSeconds&&f.Rendering<observe.RenderingSeconds+2.3&&f.Selected is not null),"Feedback from a previous window leaked into a new observe interval");
                 timing.Add(new {trialId=trial.Key,cueDuration,observeDuration,waitDuration});
             }
             Check(frames.Where(f=>f.Phase is "cue" or "wait").All(f=>f.Selected is null),"Cue/wait frames recorded a phantom selection");
             Check(phases.Count(p=>p.Phase=="cue")==24&&phases.Count(p=>p.Phase=="observe")==24&&phases.Count(p=>p.Phase=="wait")==24,"A phase was skipped or repeated");
             Check(reader.Events("calibration-ended").Single().Data.GetProperty("completed").GetInt32()==24,"Completion count is wrong");
+            var feedback=reader.Events("trial-feedback").Select(e=>JsonSerializer.Deserialize<TrialFeedbackSelection>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
+            Check(feedback.Length==24&&feedback.Select(f=>f.TrialId).Distinct().Count()==24&&feedback.All(f=>f.TargetId=="T2"),"Feedback was missing, repeated or substituted with the cue target");
+            var report=RecordedFeedbackEvaluator.Evaluate(reader.Events("frame","recognition","calibration-plan","trial-marker","trial-feedback","trial-exclusion").ToArray(),window.Runtime.Profile.ProfileHash);
+            Check(report.Trials.Count==24&&report.Trials.All(t=>t.FirstSelection=="T2"&&t.DrawDelaySeconds is not null),"Report differs from actual held feedback");
             File.WriteAllText(Path.Combine(output,"timing.json"),JsonSerializer.Serialize(timing,CanonicalJson.Options));
-            results.Add("PASS: 24 real WPF trials; four ordered groups; 1 / 4 / 0.5 second drawing cadence; true T2 feedback while cueing T1; no inherited border; complete records.");
+            results.Add("PASS: 24 real WPF trials; four ordered groups; 1 / 4 / 0.5 second drawing cadence; one held T2 feedback per trial while cueing other targets; subsequent T4 and rejection cannot change the border; no inherited border; records and feedback report agree.");
             Console.WriteLine(results[^1]);
 
-            // Interrupting a cue queues a replacement, but interrupting the post-feedback wait retains the completed trial.
+            // Interrupting held feedback clears it and queues a replacement; the post-feedback wait retains completed trials.
             Click("StartButton"); Click("CalibrationStart");
             await Until(()=>view.CueTargetId=="T1"&&status.Text.Contains("第 1/4 组"),20000);
+            await Until(()=>status.Text.Contains("请注视目标 1")&&view.PresentedTargetId=="T2",10000);
             Click("PauseButton");
             Check(!view.StimulusEnabled&&view.CueTargetId is null&&view.PresentedTargetId is null,"Pause left cue or feedback visible");
             Click("StartButton");

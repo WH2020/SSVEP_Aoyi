@@ -1,7 +1,7 @@
-param([string]$PythonRuntimeSource,[switch]$ReuseRuntime)
+param([string]$PythonRuntimeSource,[switch]$ReuseRuntime,[string]$OutputDirectory)
 $ErrorActionPreference = 'Stop'
 $researchRoot = Split-Path -Parent $PSScriptRoot
-$researchOutput = Join-Path $researchRoot 'outputs/SSVEP-Studio-Research'
+$researchOutput = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $researchRoot 'outputs/SSVEP-Studio-Research' }
 $researchDotnet = Join-Path $researchRoot '.tools/dotnet/dotnet.exe'
 if (!(Test-Path -LiteralPath $researchDotnet)) { $researchDotnet = 'dotnet' }
 if (!$PythonRuntimeSource) { $PythonRuntimeSource = Join-Path $researchRoot 'outputs/SSVEP-Studio/runtime/python' }
@@ -29,7 +29,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'verify_brainvision.py'),(Join-P
 Copy-Item -LiteralPath (Join-Path $researchRoot 'docs/SSVEP参数研发版使用说明.md') -Destination (Join-Path $researchOutput '使用说明.md') -Force
 $researchLaunch = "@echo off`r`nsetlocal`r`nstart `"`" /d `"%~dp0`" `"%~dp0Ssvep.Studio.exe`" --research`r`n"
 [IO.File]::WriteAllText((Join-Path $researchOutput '启动参数研发版.cmd'),$researchLaunch,[Text.UTF8Encoding]::new($false))
-[IO.File]::WriteAllText((Join-Path $researchOutput '版本说明.txt'),"SSVEP Studio 0.3.2 参数研发版`r`n修复连续脑电已有识别结果但时钟接收抖动导致校准一直准备的问题；保留精度提示与记录。`r`n个人校准：目标 1→6，共四组；1 秒提示框、4 秒实际反馈、0.5 秒等待。`r`n工程测试不代表已验证真人识别率或物理刺激锁时。`r`n",[Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $researchOutput '版本说明.txt'),"SSVEP Studio 0.3.3 参数研发版`r`n校准目标试次首次有效反馈保持到本轮结束，后续判定不换框；逐窗计算与原始记录继续。`r`n个人校准：目标 1→6，共四组；1 秒提示框、4 秒实际反馈、0.5 秒等待。`r`n工程测试不代表已验证真人识别率或物理刺激锁时。`r`n",[Text.UTF8Encoding]::new($false))
 $researchFiles = Get-ChildItem -LiteralPath $researchOutput -File -Recurse | Where-Object Name -ne 'package-sha256.json' | ForEach-Object {
     [ordered]@{path=[IO.Path]::GetRelativePath($researchOutput,$_.FullName);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
 }

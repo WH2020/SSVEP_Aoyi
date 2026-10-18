@@ -5,6 +5,11 @@ public sealed record CalibrationTrial(string TrialId,string Label,int? TargetInd
 public sealed record TrialMarker(string TrialId,string Phase,string Label,string? TargetId,double HostSeconds,
     double RenderingSeconds,string? ModelId,double? EstimatedSampleIndex,string TimingQuality,string? ReplacesTrialId=null,
     double? DrawHostSeconds=null,string? RenderModelId=null,double AlignmentMarginSamples=0);
+public sealed record TrialFeedbackSelection(string TrialId,string TargetId,long FirstSampleIndex,long LastSampleIndex,
+    double DecisionHostSeconds,double CommittedHostSeconds)
+{
+    public const string Policy="first-accepted-target-v1";
+}
 
 public sealed class CalibrationPlan
 {

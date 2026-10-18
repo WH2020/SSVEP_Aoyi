@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
     <AssemblyName>Ssvep.Studio</AssemblyName><RootNamespace>Ssvep.Studio.App</RootNamespace>
-    <Version>0.3.2</Version>
+    <Version>0.3.3</Version>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../Ssvep.Speller.Core/Ssvep.Speller.Core.csproj" /></ItemGroup>
   <ItemGroup><None Include="../Ssvep.Speller.App/Bridges/synchroni_eeg_bridge.py" Link="Bridges/synchroni_eeg_bridge.py" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>

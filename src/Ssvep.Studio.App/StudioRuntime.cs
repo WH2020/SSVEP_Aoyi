@@ -9,6 +9,8 @@ using Ssvep.Speller.Core.Studio;
 
 namespace Ssvep.Studio.App;
 
+public sealed record StudioRecognition(SelectionEvaluation Decision,long FirstSampleIndex,long LastSampleIndex,double HostSeconds);
+
 /// <summary>The gate serializes commands, acquisition, health transitions and completed decisions.
 /// Classification and recording have separate bounded workers. Dispatcher is display-only.</summary>
 public sealed class StudioRuntime : IAsyncDisposable
@@ -62,7 +64,7 @@ public sealed class StudioRuntime : IAsyncDisposable
     private BridgeHealthKind? previousHealth;
     private long validWindows;
     private long rejectedWindows;
-    private long lastDecisionFirstSampleIndex;
+    private StudioRecognition? lastRecognition;
     public bool IsOfflineBusy { get; private set; }
     private sealed class Work(ResearchPipeline pipeline,ScheduledWindow window,StudioRecorder owner,long generation,long run,double arrived)
     {
@@ -96,7 +98,8 @@ public sealed class StudioRuntime : IAsyncDisposable
     public RunContext? ActiveContext { get { lock(dataGate) return context; } }
     public ResearchScores? LastScores { get; private set; }
     public SelectionEvaluation? LastDecision { get; private set; }
-    public long? LastDecisionFirstSampleIndex { get { lock(dataGate) return LastScores is null?null:lastDecisionFirstSampleIndex; } }
+    public StudioRecognition? LastRecognition { get { lock(dataGate) return LastScores is null?null:lastRecognition; } }
+    public long? LastDecisionFirstSampleIndex => LastRecognition?.FirstSampleIndex;
     public double? ClassificationMilliseconds { get; private set; }
     public ClockModel? SampleClock { get { lock(dataGate) return sampleClock?.Current; } }
     public ClockModel? RenderClock { get { lock(dataGate) return renderClock.Current; } }
@@ -436,7 +439,8 @@ public sealed class StudioRuntime : IAsyncDisposable
                     if(finished-job.Arrived>1) { CancelWindow(job,"Overload"); Pause("识别结果过期，请检查系统负载后恢复"); continue; }
                     var decision=SelectionPolicy.Evaluate(scores.Result,context!.Profile.Decision);
                     bool accepted=Session.ApplyEvaluation(job.Generation,job.Window.Window.LastSampleIndex,decision);
-                    lastDecisionFirstSampleIndex=job.Window.Window.FirstSampleIndex;
+                    lastRecognition=new(decision with {Accepted=accepted,TargetId=accepted?decision.TargetId:null},
+                        job.Window.Window.FirstSampleIndex,job.Window.Window.LastSampleIndex,finished);
                     LastScores=scores; LastDecision=decision; ClassificationMilliseconds=(finished-started)*1000;
                     validWindows++; if(!accepted) rejectedWindows++;
                     recorder!.Record("recognition",new {run=job.Run,job.Window.Ordinal,job.Window.Continuity,job.Window.Anchor,

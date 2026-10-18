@@ -29,7 +29,8 @@ public static class ReplayRunner
         if(!profile.TargetFrequenciesHz.SequenceEqual(original.Profile.TargetFrequenciesHz)) throw new ArgumentException("刺激频率改变必须重新采集，不能用这份 EEG 比较新频率。");
         var context=new RunContext(profile,original.Content,original.SamplingRateHz,original.ChannelCount,original.Channels,original.ElectrodeBindings,original.Display,original.SampleUnit,original.ScaleToVolts,original.UnitSource);
         var pipeline=new ResearchPipeline(context); var results=new List<ReplayDecision>();
-        var evidence=reader.Events("filter-reset","state","clock-model","trial-marker","trial-exclusion","recognition","frame").ToArray();
+        var evidence=reader.Events("filter-reset","state","clock-model","trial-marker","trial-exclusion","recognition","frame",
+            "calibration-plan","trial-feedback").ToArray();
         var resets=evidence.Where(e=>e.Kind=="filter-reset"&&e.Data.TryGetProperty("reason",out var why)&&why.GetString()=="unlocated-loss-notice")
             .GroupBy(e=>e.Data.GetProperty("run").GetInt64()).ToDictionary(g=>g.Key,g=>new Queue<long>(g.Select(e=>e.Data.GetProperty("afterSampleIndex").GetInt64()).Order()));
         var ends=evidence.Where(e=>e.Kind=="state"&&e.Data.TryGetProperty("afterSampleIndex",out _)&&e.Data.GetProperty("state").GetString()!="started")
@@ -59,7 +60,7 @@ public static class ReplayRunner
             }
         }
         var metrics=ReplayEvaluator.Evaluate(results,evidence,original.SamplingRateHz);
-        return new("0.3.2",reader.Manifest.GetProperty("sessionId").GetString()!,reader.Manifest.GetProperty("dataSource").GetString()!,profile.ProfileHash,
+        return new("0.3.3",reader.Manifest.GetProperty("sessionId").GetString()!,reader.Manifest.GetProperty("dataSource").GetString()!,profile.ProfileHash,
             profile.AlgorithmVersion,profile.ScoreVersion,DateTimeOffset.UtcNow,results.Count,metrics,results,reader.Warnings.Distinct().ToArray(),
             Conditions:new(original.RunConfigHash,original.SamplingRateHz,original.ChannelCount,original.Channels,original.Display,original.SampleUnit),
             RecordedFeedback:RecordedFeedbackEvaluator.Evaluate(evidence,original.Profile.ProfileHash));

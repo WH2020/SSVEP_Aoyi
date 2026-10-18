@@ -27,6 +27,10 @@ public static class RecordedFeedbackEvaluator
         var decisionTimes=decisions.Select(d=>d.Time).ToArray();
         var markers=events.Where(e=>e.Kind=="trial-marker").Select(e=>JsonSerializer.Deserialize<TrialMarker>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
         var excluded=events.Where(e=>e.Kind=="trial-exclusion").Select(e=>e.Data.GetProperty("trialId").GetString()).ToHashSet();
+        bool holdsFeedback=events.Any(e=>e.Kind=="calibration-plan"&&e.Data.TryGetProperty("targetFeedbackPolicy",out var policy)
+            &&policy.GetString()==TrialFeedbackSelection.Policy);
+        var heldFeedback=events.Where(e=>e.Kind=="trial-feedback")
+            .Select(e=>JsonSerializer.Deserialize<TrialFeedbackSelection>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
         var trials=new List<RecordedTrialFeedback>();
         int triggers=0,inherited=0; double total=0,evaluable=0,wrong=0,longest=0;
         foreach(var group in markers.GroupBy(m=>m.TrialId))
@@ -38,10 +42,22 @@ public static class RecordedFeedbackEvaluator
             if(start.Label=="target"&&TrialTiming.IsMapped(start)&&TrialTiming.IsMapped(end))
             {
                 double first=TrialTiming.FirstUsableSample(start),last=TrialTiming.LastUsableSample(end);
-                var decision=decisions.FirstOrDefault(d=>d.Accepted&&d.First>=first&&d.Last<=last&&d.Time>=a&&d.Time<=b);
-                var frame=decision is null?null:frames.FirstOrDefault(f=>f.Time>=decision.Time&&f.Time<=b&&f.Target==decision.Target);
-                trials.Add(new(group.Key,start.TargetId,decision?.Target,decision?.Target==start.TargetId,
-                    decision?.Time-a,frame?.Time-a));
+                if(holdsFeedback)
+                {
+                    var held=heldFeedback.FirstOrDefault(f=>f.TrialId==group.Key);
+                    bool valid=held is not null&&held.FirstSampleIndex>=first&&held.LastSampleIndex<=last
+                        &&held.DecisionHostSeconds>=a&&held.CommittedHostSeconds>=held.DecisionHostSeconds&&held.CommittedHostSeconds<=b;
+                    var frame=valid?frames.FirstOrDefault(f=>f.Time>=held!.CommittedHostSeconds&&f.Time<=b&&f.Target==held.TargetId):null;
+                    trials.Add(new(group.Key,start.TargetId,frame?.Target,frame is not null&&frame.Target==start.TargetId,
+                        frame is null?null:held!.DecisionHostSeconds-a,frame?.Time-a));
+                }
+                else
+                {
+                    var decision=decisions.FirstOrDefault(d=>d.Accepted&&d.First>=first&&d.Last<=last&&d.Time>=a&&d.Time<=b);
+                    var frame=decision is null?null:frames.FirstOrDefault(f=>f.Time>=decision.Time&&f.Time<=b&&f.Target==decision.Target);
+                    trials.Add(new(group.Key,start.TargetId,decision?.Target,decision?.Target==start.TargetId,
+                        decision?.Time-a,frame?.Time-a));
+                }
             }
             if(start.Label!="no-intent") continue;
             total+=b-a; string? previous=null; double episode=0,lastEnd=double.NegativeInfinity; bool firstInterval=true;

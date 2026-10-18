@@ -110,7 +110,7 @@
    <DockPanel Grid.Row="3" Margin="0,18,0,0">
     <TextBlock x:Name="LossCountLabel" DockPanel.Dock="Right" Text="丢包提示 0 次 · 累计丢样 0 点" Foreground="#66788B" FontSize="12" HorizontalAlignment="Right"
      ToolTip="本次连接的 EEG 丢包提示次数与 SDK 报告的丢样点数。COUNT 的单位是采样点，不是蓝牙包；重新连接后清零。"/>
-    <TextBlock Text="SSVEP 实验设计  /  0.3.2 参数研发" Foreground="#8B98A8" FontSize="11"/>
+    <TextBlock Text="SSVEP 实验设计  /  0.3.3 参数研发" Foreground="#8B98A8" FontSize="11"/>
    </DockPanel>
   </Grid>
  </Grid>
