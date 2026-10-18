@@ -280,10 +280,10 @@ public sealed class ResearchTests
         Assert.Equal(Enumerable.Range(0,24).Select(i=>(int?)(i/6+1)),plan.Trials.Select(t=>t.GroupNumber));
         Assert.All(plan.Trials,trial=>
         {
-            Assert.Equal("target",trial.Label); Assert.Equal(1,trial.CueSeconds);
+            Assert.Equal("target",trial.Label); Assert.Equal(0,trial.CueSeconds);
             Assert.Equal(4,trial.ObserveSeconds); Assert.Equal(.5,trial.WaitSeconds);
         });
-        Assert.Equal(132,plan.Trials.Sum(t=>t.CueSeconds+t.ObserveSeconds+t.WaitSeconds));
+        Assert.Equal(108,plan.Trials.Sum(t=>t.CueSeconds+t.ObserveSeconds+t.WaitSeconds));
         Assert.Equal(plan.Trials,CalibrationPlan.Personal(99).Trials);
     }
     [Fact]

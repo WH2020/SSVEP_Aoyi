@@ -5,10 +5,25 @@ public sealed record CalibrationTrial(string TrialId,string Label,int? TargetInd
 public sealed record TrialMarker(string TrialId,string Phase,string Label,string? TargetId,double HostSeconds,
     double RenderingSeconds,string? ModelId,double? EstimatedSampleIndex,string TimingQuality,string? ReplacesTrialId=null,
     double? DrawHostSeconds=null,string? RenderModelId=null,double AlignmentMarginSamples=0);
-public sealed record TrialFeedbackSelection(string TrialId,string TargetId,long FirstSampleIndex,long LastSampleIndex,
-    double DecisionHostSeconds,double CommittedHostSeconds)
+public sealed record TrialFeedbackSelection(string TrialId,string? TargetId,long? FirstSampleIndex,long? LastSampleIndex,
+    double DecisionHostSeconds,double CommittedHostSeconds,string Reason="Accepted")
 {
-    public const string Policy="first-accepted-target-v1";
+    public const string Policy="end-of-observe-window-v1";
+    public const string LegacyPolicy="first-accepted-target-v1";
+}
+
+/// <summary>The final complete sample-grid window inside a trial, independent of classification speed or scores.</summary>
+public sealed record TrialDecisionWindow(long FirstSampleIndex,long LastSampleIndex)
+{
+    public static TrialDecisionWindow? LatestWithin(long anchor,int windowSamples,int stepSamples,double first,double last)
+    {
+        if(!double.IsFinite(first)||!double.IsFinite(last)||last<first||windowSamples<1||stepSamples<1) return null;
+        long firstEnd=anchor+windowSamples-1;
+        double steps=Math.Floor((last-firstEnd)/stepSamples);
+        if(steps<0||steps>(long.MaxValue-firstEnd)/(double)stepSamples) return null;
+        long end=firstEnd+(long)steps*stepSamples,start=end-windowSamples+1;
+        return start>=first?new(start,end):null;
+    }
 }
 
 public sealed class CalibrationPlan
@@ -17,12 +32,12 @@ public sealed class CalibrationPlan
     public int GroupCount { get; }
     public string Algorithm { get; }
     public IReadOnlyList<CalibrationTrial> Trials { get; }
-    public static CalibrationPlan Personal(int seed) => new(seed,4,0,false,1,.5);
+    public static CalibrationPlan Personal(int seed) => new(seed,4,0,false,0,.5);
 
     public CalibrationPlan(int seed,int repetitions=10,double noIntentSeconds=180,bool randomize=true,double cueSeconds=2,double waitSeconds=0)
     {
         if(repetitions<1||!double.IsFinite(noIntentSeconds)||noIntentSeconds<0
-            ||!double.IsFinite(cueSeconds)||cueSeconds<=0||!double.IsFinite(waitSeconds)||waitSeconds<0)
+            ||!double.IsFinite(cueSeconds)||cueSeconds<0||!double.IsFinite(waitSeconds)||waitSeconds<0)
             throw new ArgumentOutOfRangeException(nameof(repetitions));
         Seed=seed; GroupCount=repetitions; Algorithm=randomize?"balanced-block-random-v1":"sequential-block-v1";
         var random=new Random(seed); var trials=new List<CalibrationTrial>();

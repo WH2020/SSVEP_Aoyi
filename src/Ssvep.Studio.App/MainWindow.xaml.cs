@@ -48,9 +48,11 @@ public partial class MainWindow : Window
         PreviewKeyDown += (_, args) => { if (args.Key == Key.Escape) { Runtime.Pause(); args.Handled = true; } };
         StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) Runtime.Pause("窗口已最小化，实验暂停"); };
         DpiChanged += (_,_)=>Runtime.Pause("屏幕缩放已改变，请结束本次会话后重新开始");
-        Deactivated += (_, _) => Runtime.Pause("实验窗口失去焦点，已暂停");
+        Deactivated += Window_Deactivated;
         Closing += Window_Closing;
     }
+
+    private void Window_Deactivated(object? sender,EventArgs args) => Runtime.Pause("实验窗口失去焦点，已暂停");
 
     private void Viewport_SizeChanged(object sender, SizeChangedEventArgs e)
     {

@@ -30,7 +30,7 @@ internal static class Program
                 if (args.Length > 1 && args[1] is "--calibration-readiness" or "--calibration-groups")
                 {
                     app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-                    exit = await CalibrationReadinessChecks.Run(output,args[1]=="--calibration-groups");
+                    exit = await CalibrationReadinessChecks.Run(output,args[1]=="--calibration-groups",args.Contains("--500hz")?500:250);
                     return;
                 }
                 if (args.Length > 1 && args[1] == "--calibration")

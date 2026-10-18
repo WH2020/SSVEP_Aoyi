@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Ssvep.Speller.Core.Research;
 
 public sealed record RecordedTrialFeedback(string TrialId,string? TargetId,string? FirstSelection,bool Correct,
-    double? DecisionDelaySeconds,double? DrawDelaySeconds);
+    double? DecisionDelaySeconds,double? DrawDelaySeconds,string? Reason=null);
 public sealed record RecordedFeedbackReport(string Status,string ProfileHash,IReadOnlyList<RecordedTrialFeedback> Trials,
     int FalseTriggers,int InheritedTriggers,double NoIntentTotalSeconds,double NoIntentEvaluableSeconds,double WrongBorderSeconds,
     double LongestWrongBorderSeconds,RateInterval FalseTriggersPerMinute,double? DecisionMedianSeconds,double? DrawMedianSeconds,
@@ -27,8 +27,10 @@ public static class RecordedFeedbackEvaluator
         var decisionTimes=decisions.Select(d=>d.Time).ToArray();
         var markers=events.Where(e=>e.Kind=="trial-marker").Select(e=>JsonSerializer.Deserialize<TrialMarker>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
         var excluded=events.Where(e=>e.Kind=="trial-exclusion").Select(e=>e.Data.GetProperty("trialId").GetString()).ToHashSet();
-        bool holdsFeedback=events.Any(e=>e.Kind=="calibration-plan"&&e.Data.TryGetProperty("targetFeedbackPolicy",out var policy)
+        bool endOfTrial=events.Any(e=>e.Kind=="calibration-plan"&&e.Data.TryGetProperty("targetFeedbackPolicy",out var policy)
             &&policy.GetString()==TrialFeedbackSelection.Policy);
+        bool holdsFeedback=endOfTrial||events.Any(e=>e.Kind=="calibration-plan"&&e.Data.TryGetProperty("targetFeedbackPolicy",out var policy)
+            &&policy.GetString()==TrialFeedbackSelection.LegacyPolicy);
         var heldFeedback=events.Where(e=>e.Kind=="trial-feedback")
             .Select(e=>JsonSerializer.Deserialize<TrialFeedbackSelection>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
         var trials=new List<RecordedTrialFeedback>();
@@ -45,11 +47,17 @@ public static class RecordedFeedbackEvaluator
                 if(holdsFeedback)
                 {
                     var held=heldFeedback.FirstOrDefault(f=>f.TrialId==group.Key);
+                    var feedbackStart=group.FirstOrDefault(m=>m.Phase=="feedback-start");
+                    var feedbackEnd=group.LastOrDefault(m=>m.Phase=="feedback-end");
+                    double feedbackFrom=feedbackStart?.DrawHostSeconds??feedbackStart?.HostSeconds??double.PositiveInfinity;
+                    double feedbackTo=feedbackEnd?.DrawHostSeconds??feedbackEnd?.HostSeconds??feedbackFrom+.5;
                     bool valid=held is not null&&held.FirstSampleIndex>=first&&held.LastSampleIndex<=last
-                        &&held.DecisionHostSeconds>=a&&held.CommittedHostSeconds>=held.DecisionHostSeconds&&held.CommittedHostSeconds<=b;
-                    var frame=valid?frames.FirstOrDefault(f=>f.Time>=held!.CommittedHostSeconds&&f.Time<=b&&f.Target==held.TargetId):null;
+                        &&held.DecisionHostSeconds>=a&&held.CommittedHostSeconds>=held.DecisionHostSeconds
+                        &&(endOfTrial?held.CommittedHostSeconds>=b&&feedbackFrom>=held.CommittedHostSeconds:held.CommittedHostSeconds<=b);
+                    var frame=valid&&held!.TargetId is not null?frames.FirstOrDefault(f=>f.Time>=Math.Max(held.CommittedHostSeconds,endOfTrial?feedbackFrom:a)
+                        &&f.Time<=(endOfTrial?feedbackTo:b)&&f.Target==held.TargetId):null;
                     trials.Add(new(group.Key,start.TargetId,frame?.Target,frame is not null&&frame.Target==start.TargetId,
-                        frame is null?null:held!.DecisionHostSeconds-a,frame?.Time-a));
+                        frame is null?null:(endOfTrial?held!.CommittedHostSeconds:held!.DecisionHostSeconds)-a,frame?.Time-a,held?.Reason));
                 }
                 else
                 {

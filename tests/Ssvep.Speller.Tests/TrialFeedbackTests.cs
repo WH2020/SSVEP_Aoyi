@@ -8,7 +8,7 @@ public sealed class TrialFeedbackTests
     private static SessionEvent Event(string kind,object data)=>new(1,kind,null,JsonSerializer.SerializeToElement(data,CanonicalJson.Options));
     private static List<SessionEvent> Trial()=>
     [
-        Event("calibration-plan",new {targetFeedbackPolicy=TrialFeedbackSelection.Policy}),
+        Event("calibration-plan",new {targetFeedbackPolicy=TrialFeedbackSelection.LegacyPolicy}),
         Event("trial-marker",new TrialMarker("t","observe-start","target","T2",0,0,"m",0,"Estimated",DrawHostSeconds:0)),
         Event("trial-marker",new TrialMarker("t","observe-end","target","T2",4,4,"m",1000,"Estimated",DrawHostSeconds:4)),
         Event("recognition",new {hostSeconds=2.6,firstSampleIndex=0,lastSampleIndex=624,decision=new {accepted=true,targetId="T1"}}),

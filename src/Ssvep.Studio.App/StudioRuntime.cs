@@ -65,6 +65,7 @@ public sealed class StudioRuntime : IAsyncDisposable
     private long validWindows;
     private long rejectedWindows;
     private StudioRecognition? lastRecognition;
+    private readonly Queue<StudioRecognition> recentRecognitions=new();
     public bool IsOfflineBusy { get; private set; }
     private sealed class Work(ResearchPipeline pipeline,ScheduledWindow window,StudioRecorder owner,long generation,long run,double arrived)
     {
@@ -100,6 +101,20 @@ public sealed class StudioRuntime : IAsyncDisposable
     public SelectionEvaluation? LastDecision { get; private set; }
     public StudioRecognition? LastRecognition { get { lock(dataGate) return LastScores is null?null:lastRecognition; } }
     public long? LastDecisionFirstSampleIndex => LastRecognition?.FirstSampleIndex;
+    public TrialDecisionWindow? FinalTrialWindow(double first,double last)
+    {
+        lock(dataGate)
+        {
+            var scheduler=activePipeline?.Scheduler;
+            return scheduler?.Anchor is long anchor?TrialDecisionWindow.LatestWithin(anchor,
+                scheduler.WindowSamples,scheduler.StepSamples,first,last):null;
+        }
+    }
+    public StudioRecognition? RecognitionFor(TrialDecisionWindow window)
+    {
+        lock(dataGate) return IsRunning&&LastScores is not null?recentRecognitions.FirstOrDefault(r=>
+            r.FirstSampleIndex==window.FirstSampleIndex&&r.LastSampleIndex==window.LastSampleIndex):null;
+    }
     public double? ClassificationMilliseconds { get; private set; }
     public ClockModel? SampleClock { get { lock(dataGate) return sampleClock?.Current; } }
     public ClockModel? RenderClock { get { lock(dataGate) return renderClock.Current; } }
@@ -333,7 +348,7 @@ public sealed class StudioRuntime : IAsyncDisposable
                 }
                 recordingRun=Session.Start(); awaitingFirstFrame=true; activePipeline=null;
                 firstFrameTime=0; lastFrameTime=Now; renderedFrames=0; longFrames=0; recentFrameTimes.Clear(); renderClock=new("wpf-rendering-seconds",1);
-                LastScores=null; LastDecision=null; lastPresentedSelection=null; Notice="";
+                LastScores=null; LastDecision=null; lastPresentedSelection=null; recentRecognitions.Clear(); Notice="";
                 recorder.Record("state",new {state="started",run=recordingRun,simulation=IsSimulation,context!.RunConfigHash});
                 if(!IsSimulation) recorder.Record("sample-loss",new {events=SampleLossEventCount,samples=LostSampleCount});
                 RecordImpedance();
@@ -441,6 +456,8 @@ public sealed class StudioRuntime : IAsyncDisposable
                     bool accepted=Session.ApplyEvaluation(job.Generation,job.Window.Window.LastSampleIndex,decision);
                     lastRecognition=new(decision with {Accepted=accepted,TargetId=accepted?decision.TargetId:null},
                         job.Window.Window.FirstSampleIndex,job.Window.Window.LastSampleIndex,finished);
+                    recentRecognitions.Enqueue(lastRecognition);
+                    while(recentRecognitions.Count>32) recentRecognitions.Dequeue();
                     LastScores=scores; LastDecision=decision; ClassificationMilliseconds=(finished-started)*1000;
                     validWindows++; if(!accepted) rejectedWindows++;
                     recorder!.Record("recognition",new {run=job.Run,job.Window.Ordinal,job.Window.Continuity,job.Window.Anchor,
@@ -465,7 +482,7 @@ public sealed class StudioRuntime : IAsyncDisposable
         job.Owner.Record("window-cancelled",new {run=job.Run,job.Window.Ordinal,job.Window.Continuity,job.Window.Window.FirstSampleIndex,job.Window.Window.LastSampleIndex,reason});
     }
     private void CancelWindows(string reason)
-    { if(executing is not null) CancelWindow(executing,reason); while(classification.Reader.TryRead(out var queued)) CancelWindow(queued,reason); }
+    { recentRecognitions.Clear(); if(executing is not null) CancelWindow(executing,reason); while(classification.Reader.TryRead(out var queued)) CancelWindow(queued,reason); }
 
     private async Task MonitorAsync()
     {

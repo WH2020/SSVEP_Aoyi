@@ -73,6 +73,8 @@ public static class ReplayEvaluator
     {
         var markers=events.Where(e=>e.Kind=="trial-marker").Select(e=>JsonSerializer.Deserialize<TrialMarker>(e.Data.GetRawText(),CanonicalJson.Options)!).ToArray();
         var excluded=events.Where(e=>e.Kind=="trial-exclusion").Select(e=>e.Data.GetProperty("trialId").GetString()).ToHashSet();
+        bool endOfTrial=events.Any(e=>e.Kind=="calibration-plan"&&e.Data.TryGetProperty("targetFeedbackPolicy",out var policy)
+            &&policy.GetString()==TrialFeedbackSelection.Policy);
         var outcomes=new List<TrialOutcome>(); int falseTriggers=0; double noIntentSeconds=0,wrongSeconds=0,longestWrong=0;
         foreach(var group in markers.GroupBy(m=>m.TrialId))
         {
@@ -85,8 +87,9 @@ public static class ReplayEvaluator
             var valid=decisions.Where(d=>d.FirstSampleIndex>=firstUsable&&d.LastSampleIndex<=lastUsable).ToArray();
             if(start.Label=="target")
             {
-                var first=valid.FirstOrDefault(d=>d.Decision.Accepted);
-                double? delay=first is null?null:(first.LastSampleIndex-start.EstimatedSampleIndex)/rate;
+                var first=endOfTrial?valid.MaxBy(d=>d.LastSampleIndex):valid.FirstOrDefault(d=>d.Decision.Accepted);
+                if(first?.Decision.Accepted!=true) first=null;
+                double? delay=first is null?null:endOfTrial?end.RenderingSeconds-start.RenderingSeconds:(first.LastSampleIndex-start.EstimatedSampleIndex)/rate;
                 outcomes.Add(new(group.Key,start.Label,start.TargetId,first?.Decision.TargetId,first is not null,
                     first?.Decision.TargetId==start.TargetId,delay,valid.Length==0?"no-valid-window":"evaluated"));
             }
@@ -116,7 +119,8 @@ public static class ReplayEvaluator
         return new(markers.Length==0?"缺少标签":targets.Length==0?"缺少可映射有效试次":limited?"算法回放估计（含时钟精度受限标签）":"算法回放估计",outcomes,
             Wilson(correct,accepted),Wilson(accepted,targets.Length),noIntentSeconds>0?falseTriggers/(noIntentSeconds/60):null,
             falseTriggers,noIntentSeconds/60,delays.Length==0?null:RobustClockMapper.Quantile(delays,.5),delays.Length==0?null:RobustClockMapper.Quantile(delays,.95),
-            wrongSeconds,"sample-index estimate; complete windows inside recorded P95 alignment margins; not measured display latency; fixed acquisition/display delay uncalibrated",
+            wrongSeconds,(endOfTrial?"one terminal-window decision at observe-end; delay includes the instructed stimulation interval; ":"")
+                +"sample-index estimate; complete windows inside recorded P95 alignment margins; not measured display latency; fixed acquisition/display delay uncalibrated",
             Poisson(falseTriggers,noIntentSeconds/60),longestWrong,
             Enumerable.Range(1,6).ToDictionary(t=>$"T{t}",t=>(IReadOnlyDictionary<string,int>)Enumerable.Range(1,6).Select(s=>$"T{s}").Append("rejected")
                 .ToDictionary(s=>s,s=>targets.Count(tr=>tr.TargetId==$"T{t}"&&(tr.FirstSelection??"rejected")==s))));
