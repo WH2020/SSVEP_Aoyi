@@ -101,9 +101,7 @@ def verify(source, export):
                 expected_events.append(((index - segment["firstSampleIndex"]) / raw.info["sfreq"], description))
                 placed.add(event_id)
         assert len(raw.annotations) == len(expected_events) == segment["eventCount"], "Event count mismatch"
-        for annotation, expected_event in zip(raw.annotations, sorted(expected_events)):
-            assert abs(annotation["onset"] - expected_event[0]) < 1e-9, "Event offset mismatch"
-            assert annotation["description"] == expected_event[1], "Event description mismatch"
+        verify_annotations(raw.annotations, expected_events)
         reports.append({"file": segment["headerFile"], "samples": int(raw.n_times), "channels": len(names),
                         "events": len(expected_events), "max_absolute_error_volts": maximum_error})
         raw.close()
@@ -115,6 +113,17 @@ def verify(source, export):
               "limitation": "File fidelity only; physical timing and participant accuracy not validated."}
     (export / "mne-readback.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), "utf-8")
     return result
+
+
+def verify_annotations(annotations, expected_events):
+    # Boundary-end and next-phase-start can occupy the same sample. Compare both
+    # sides with the same tie order instead of sorting only the expected labels.
+    actual = sorted((float(a["onset"]), str(a["description"])) for a in annotations)
+    expected = sorted(expected_events)
+    assert len(actual) == len(expected), "Event count mismatch"
+    for observed, wanted in zip(actual, expected):
+        assert abs(observed[0] - wanted[0]) < 1e-9, "Event offset mismatch"
+        assert observed[1] == wanted[1], "Event description mismatch"
 
 
 if __name__ == "__main__":
